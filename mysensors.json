@@ -1,0 +1,26 @@
+{
+	"gh_id": 		"soif/MySensors_ChristmasTree",
+	"name": 		"MySensors ChristmasTree",
+	"baseline": 	"Controls a RGB individually addressable Leds Strip (aka NeoPixel) +  a relay",
+	"description":	"description.md",
+	"version":		"1.00",
+	"type":			"project",
+	"keywords":		"Christmas Tree, Led Strip, RGB, RGB Led Strip, Relay",
+	"homepage":		"https://www.mysensors.org",
+	"time":			"2016-12-30",	
+	"license":		"MIT",
+	"authors": [
+		{
+			"name":		"Francois Dechery",
+			"email":	"wxopwx@gmail.com",
+			"homepage":	"https//www.phpmydomo.org",
+			"role": 	"Developper",
+			"gh_user": 	"soif",
+			"mys_user": "soif"
+		}
+	],
+	"images": [
+	],
+	"hardware": [
+	]
+}
