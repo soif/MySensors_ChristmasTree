@@ -35,7 +35,11 @@
 #define SPEED_DEF		40		// Default Speed
 #define SPEED_STEP		5		// Speed scale quantize
 #define ATIME_OFF 		1		// Anim OFF time (ms) 
-#define MODES_COUNT 	3		// light modes count
+
+#define MODE_OFF 		0		// mode Light Off
+#define MODE_ON 		1		// mode Light On
+#define MODE_ANIM 		2		// mode Anim
+#define LAST_MODE 		2		// last light mode
 
 #define CHILD_ID_LIGHT	0
 #define CHILD_ID_ANIM	1
@@ -58,15 +62,15 @@
 #endif
 
 // Pins ##################################################################################
-#define DATA_PIN 3			// FASTLED : Data Pin
-#define BUT_ANIM_PIN 4		// Anim Switch Pin (to gnd)
-#define BUT_RELAY_PIN 5		// Relay Switch Pin (to gnd)
+#define DATA_PIN		3		// FASTLED : Data Pin
+#define BUT_ANIM_PIN	4		// Anim Switch Pin (to gnd)
+#define BUT_RELAY_PIN	5		// Relay Switch Pin (to gnd)
 
-#define RELAY_PIN 6			// Relay Pin
-#define RELAY_LED_PIN 8		// Relay Led Pin
-#define ANIM_LED_PIN 7		// Anim  Led Pin
+#define RELAY_PIN		6		// Relay Pin
+#define RELAY_LED_PIN	8		// Relay Led Pin
+#define ANIM_LED_PIN 	7		// Anim  Led Pin
 
-#define POT_PIN A0			// Potentiomenter Pin
+#define POT_PIN 		A0		// Potentiomenter Pin
 
 // Variables #############################################################################
 float			pot_read 		=0;
@@ -82,12 +86,12 @@ unsigned int	anim_time		= 0;
 uint8_t 		gHue 			= 0;
 uint8_t			gHueDelta		= HUE_DEF_DELTA;
 boolean			anim_sw_stopping=0;
-byte			light_mode		=2;	//starting state (0=off, 1=on, 2=anim)
-boolean			anim_is_on		=1;	//starting state
-boolean			relay_is_on		=1;	//starting state
+byte			light_mode		=MODE_ANIM;		//starting state (0=off, 1=on, 2=anim)
+boolean			anim_is_on		=false;			//starting state
+boolean			relay_is_on		=false;			//starting state
 
-CRGB 			leds[NUM_LEDS];			// FASTLED : Define the array of leds
-CRGB 			current_color	= CRGB::Red;
+CRGB 			leds[NUM_LEDS];					// FASTLED : Define the array of leds
+CRGB 			current_color	= CRGB::Red;	//starting color
 
 Bounce 			debounceButAnim		= Bounce(); 
 Bounce 			debounceButRelay	= Bounce(); 
@@ -95,9 +99,10 @@ Bounce 			debounceButRelay	= Bounce();
 MyMessage 		msgLight(	CHILD_ID_LIGHT,	V_STATUS);
 MyMessage 		msgAnim(	CHILD_ID_ANIM,	V_PERCENTAGE);
 MyMessage 		msgRelay(	CHILD_ID_RELAY,	V_STATUS);
-//MyMessage 		msgTemp(	CHILD_ID_TEMP,	V_TEMP);
+//MyMessage 	msgTemp(	CHILD_ID_TEMP,	V_TEMP);
 
 SyncLED AnimLed(ANIM_LED_PIN);
+
 
 // #######################################################################################
 // ## MAIN  ##############################################################################
@@ -176,21 +181,21 @@ void receive(const MyMessage &msg){
 		DEBUG_PRINTLN(color_string);
 		current_color = (long) strtol( &color_string[0], NULL, 16);
 		SetAllLeds(current_color);
-		SetLightMode(1, true);
+		SetLightMode(MODE_ON , true);
 	}
 	else if (msg.sensor==CHILD_ID_ANIM && msg.type == V_STATUS){
 		boolean r_state = msg.getBool();
 		if(r_state){
-			SetLightMode(2, true);
+			SetLightMode(MODE_ANIM, true);
 		}
 		else{
-			SetLightMode(0, true);
+			SetLightMode(MODE_OFF, true);
 		}
 	}
 	else if (msg.sensor==CHILD_ID_ANIM && msg.type == V_PERCENTAGE){
 		unsigned int r_speed= msg.getUInt();
 		SetAnimSpeed(r_speed, false);
-		SetLightMode(2, true);
+		SetLightMode(MODE_ANIM , true);
 
 		pot_enable = false;
 		DEBUG_PRINTLN("- Lock Pot.");
@@ -225,13 +230,13 @@ void SendAnimSpeed(unsigned int speed){
 
 // --------------------------------------------------------------------
 void UpdateAnimLed(){
-	if (light_mode ==0){
+	if (light_mode == MODE_OFF){
 		AnimLed.Off();
 	}
-	else if (light_mode ==1){
+	else if (light_mode == MODE_ON){
 		AnimLed.On();
 	}
-	else if (light_mode ==2){
+	else if (light_mode == MODE_ANIM){
 		AnimLed.resumePattern();
 		AnimLed.update();
 	}
@@ -353,15 +358,18 @@ void SetAnimSpeed(unsigned int speed, boolean do_send_msg){
 // --------------------------------------------------------------------
 void SetLightMode(byte mode, boolean do_send_msg){
 	//rotate mode
-	if(mode > MODES_COUNT){
-		mode=0;
+	if(mode > LAST_MODE){
+		mode=MODE_OFF;
 	}
+	
+	DEBUG_PRINT(" -> Set Mode ");	
+	DEBUG_PRINTLN(mode);	
 
-	if(mode == 0){
+	if(mode == MODE_OFF){
 		DEBUG_PRINTLN(" -> Light OFF");	
 		anim_is_on =false;
 
-		if (light_mode ==1){
+		if (light_mode == MODE_ON){
 			SetAllLeds(CRGB::Black);
 
 			if(do_send_msg){
@@ -369,7 +377,7 @@ void SetLightMode(byte mode, boolean do_send_msg){
 				//SendAnimStatus(false);
 			}
 		}
-		else if (light_mode ==2){
+		else if (light_mode == MODE_ANIM){
 			
 			if(! anim_sw_stopping){
 				anim_sw_stopping =1;
@@ -385,11 +393,11 @@ void SetLightMode(byte mode, boolean do_send_msg){
 		}
 	}
 
-	else if (mode == 1){
+	else if (mode == MODE_ON){
 		DEBUG_PRINTLN(" -> Light ON");	
 		anim_is_on =false;
 
-		if(light_mode == 0){
+		if(light_mode == MODE_OFF){
 			SetAllLeds(current_color);
 
 			if(do_send_msg){
@@ -397,18 +405,18 @@ void SetLightMode(byte mode, boolean do_send_msg){
 				//SendAnimStatus(false);
 			}
 		}	
-		else if (light_mode == 2){
+		else if (light_mode == MODE_ANIM){
 			if(do_send_msg){
 				SendLightStatus(true);
 				SendAnimStatus(false);
 			}
 		}
 	}
-	else if (mode == 2){
+	else if (mode == MODE_ANIM){
 		DEBUG_PRINTLN(" -> Light ANIM");	
 		anim_is_on = true;
 
-		if(light_mode == 0){
+		if(light_mode == MODE_OFF){
 			SetAllLeds(CRGB::Black);
 
 			if(do_send_msg){
@@ -416,7 +424,7 @@ void SetLightMode(byte mode, boolean do_send_msg){
 				SendAnimStatus(true);
 			}
 		}
-		else if (light_mode == 1){
+		else if (light_mode == MODE_ON){
 			SetAllLeds(CRGB::Black);
 
 			if(do_send_msg){
