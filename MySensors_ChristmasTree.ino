@@ -26,7 +26,7 @@
 #define NUM_LEDS		50 		// FASTLED : How many leds in the strip?
 #define DEBOUNCE_TIME	100		// Button Debounce Time
 #define HUE_DEF_DELTA	2		// Default Hue Delta
-#define POT_READ_COUNT 100		// potentiometer reading count
+#define POT_READ_COUNT 	100		// potentiometer reading count
 #define POT_READ_PERC	2.0		// new POT read
 #define POT_DEBOUNCE 	100		// potentiometer debounce time
 
@@ -73,7 +73,7 @@
 #define POT_PIN 		A0		// Potentiomenter Pin
 
 // Variables #############################################################################
-float			pot_read 		=0;
+float			pot_read 		= 0;
 byte			pot_readings[POT_READ_COUNT];		// all potentiometer reading
 byte			pot_read_index 	= 0;				// the index of the current potentiometer reading
 unsigned long 	pot_read_total 	= 0; 				// total potentiometer reading     
@@ -85,10 +85,10 @@ byte			anim_speed		= SPEED_DEF;
 unsigned int	anim_time		= 0;
 uint8_t 		gHue 			= 0;
 uint8_t			gHueDelta		= HUE_DEF_DELTA;
-boolean			anim_sw_stopping=0;
-byte			light_mode		=MODE_ANIM;		//starting state (0=off, 1=on, 2=anim)
-boolean			anim_is_on		=false;			//starting state
-boolean			relay_is_on		=false;			//starting state
+boolean			anim_sw_stopping= 0;
+byte			light_mode		= MODE_ANIM;	//starting state (0=off, 1=on, 2=anim)
+boolean			anim_is_on		= false;		//starting state
+boolean			relay_is_on		= false;		//starting state
 
 CRGB 			leds[NUM_LEDS];					// FASTLED : Define the array of leds
 CRGB 			current_color	= CRGB::Red;	//starting color
@@ -381,7 +381,7 @@ void SetLightMode(byte mode, boolean do_send_msg){
 			
 			if(! anim_sw_stopping){
 				anim_sw_stopping =1;
-				Scheduler.delay(1000);
+				Scheduler.delay(ATIME_MAX + ATIME_OFF + 50);
 				SetAllLeds(CRGB::Black);
 				anim_sw_stopping =0;
 			}
