@@ -460,26 +460,26 @@ void SwitchRelay(boolean state, boolean do_send_msg){
 void leds_sequence(){
 	if(!anim_is_on){return;}
 
-	p_up(0, 1,0);		// red
+	Pixels_Up(0, 1,0);		// red
 
-	loop_up_drift(3, 0);
+	Anim_Up_Drift(3, 0);
 
-	loop_rand(120,0);
+	Anim_Random(120,0);
 
-	p_up(96, 1,0); 		// green
-	p_up(gHue, 0,1);	// off
+	Pixels_Up(96, 1,0); 		// green
+	Pixels_Up(gHue, 0,1);	// off
 
-	loop_rand(40,1);
+	Anim_Random(40,1);
 	
-	loop_down_drift(3,0);
+	Anim_Down_Drift(3,0);
 
-	p_down(160, 1,0); 	// blue
-	p_down(gHue, 0,1);	// off
+	Pixels_Down(160, 1,0); 	// blue
+	Pixels_Down(gHue, 0,1);	// off
 
-	loop_updown_drift(3,1);
+	Anim_UpDown_Blink(3,1);
 
-	loop_blink(6);
-	loop_blink(6);
+	Anim_Blink(6);
+	Anim_Blink(6);
 
 }
 
@@ -493,56 +493,56 @@ void SetAllLeds( CRGB color ){
 
 
 // --------------------------------------------------------------------
-void loop_up_drift(int count, boolean hold){
+void Anim_Up_Drift(int count, boolean hold){
 	for(int i=1;i <= count; i++){
-		p_up(gHue, hold,1);
+		Pixels_Up(gHue, hold,1);
 	}
 }
 
 
 // --------------------------------------------------------------------
-void loop_down_drift(int count, boolean hold){
+void Anim_Down_Drift(int count, boolean hold){
 	for(int i=1;i <= count; i++){
-		p_down(gHue, hold,1);
+		Pixels_Down(gHue, hold,1);
 	}
 }
 
 
 // --------------------------------------------------------------------
-void loop_updown_drift(int count, boolean hold){
+void Anim_UpDown_Blink(int count, boolean hold){
 	for(int i=1;i <= count; i++){
-		p_up_down(gHue, hold,1);
+		Anim_UpDown(gHue, hold,1);
 	}
 }
 
 
 // --------------------------------------------------------------------
-void loop_rand(int count, boolean hold){
+void Anim_Random(int count, boolean hold){
 	for(int i=1;i <= count ; i++){
-		p_rand(0,hold);
+		Pixels_Random(0,hold);
 	}
 }
 
 
 // --------------------------------------------------------------------
-void loop_blink(int count_blinks){
+void Anim_Blink(int count_blinks){
 	gHueDelta = 255 / count_blinks ;
 	for(int i=1;i <= count_blinks; i++){
-		p_blink_one(gHue, 0,1);
+		Pixels_Blink_One(gHue, 0,1);
 	}
 	gHueDelta = HUE_DEF_DELTA;
 }
 
 
 // --------------------------------------------------------------------
-void p_up_down(uint8_t hue, boolean hold, boolean drift){
-	p_up	(hue, hold, drift);
-	p_down	(hue, hold, drift);
+void Anim_UpDown(uint8_t hue, boolean hold, boolean drift){
+	Pixels_Up	(hue, hold, drift);
+	Pixels_Down	(hue, hold, drift);
 }
 
 
 // --------------------------------------------------------------------
-void p_blink_one(uint8_t hue, boolean hold, boolean drift){
+void Pixels_Blink_One(uint8_t hue, boolean hold, boolean drift){
 	for(int i=0;i< NUM_LEDS; i++){
 		if(!anim_is_on){return;}
 		leds[i] = CHSV(hue, 255, 255);
@@ -568,7 +568,7 @@ void p_blink_one(uint8_t hue, boolean hold, boolean drift){
 
 
 // --------------------------------------------------------------------
-void p_rand(uint8_t hue, boolean hold){
+void Pixels_Random(uint8_t hue, boolean hold){
 	int i =random(0, NUM_LEDS );
 	if(hue == 0){
 		hue=random(0, 255 );
@@ -591,7 +591,7 @@ void p_rand(uint8_t hue, boolean hold){
 
 
 // --------------------------------------------------------------------
-void p_up(uint8_t hue, boolean hold, boolean drift){
+void Pixels_Up(uint8_t hue, boolean hold, boolean drift){
 
 	for(int i=0; i< NUM_LEDS; i++){
 		if(!anim_is_on){return;}
@@ -618,7 +618,7 @@ void p_up(uint8_t hue, boolean hold, boolean drift){
 
 
 // --------------------------------------------------------------------
-void p_down(uint8_t hue, boolean hold, boolean drift){
+void Pixels_Down(uint8_t hue, boolean hold, boolean drift){
 
 	for(int i=NUM_LEDS - 1; i >=0; i-- ){
 		if(!anim_is_on){return;}
