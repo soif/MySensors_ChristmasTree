@@ -370,7 +370,7 @@ void SetLightMode(byte mode, boolean do_send_msg){
 		anim_is_on =false;
 
 		if (light_mode == MODE_ON){
-			SetAllLeds(CRGB::Black);
+			Pixels_Off();
 
 			if(do_send_msg){
 				SendLightStatus(false);
@@ -382,7 +382,7 @@ void SetLightMode(byte mode, boolean do_send_msg){
 			if(! anim_sw_stopping){
 				anim_sw_stopping =1;
 				Scheduler.delay(ATIME_MAX + ATIME_OFF + 50);
-				SetAllLeds(CRGB::Black);
+				Pixels_Off();
 				anim_sw_stopping =0;
 			}
 
@@ -417,7 +417,7 @@ void SetLightMode(byte mode, boolean do_send_msg){
 		anim_is_on = true;
 
 		if(light_mode == MODE_OFF){
-			SetAllLeds(CRGB::Black);
+			Pixels_Off();
 
 			if(do_send_msg){
 				//SendLightStatus(false);
@@ -425,7 +425,7 @@ void SetLightMode(byte mode, boolean do_send_msg){
 			}
 		}
 		else if (light_mode == MODE_ON){
-			SetAllLeds(CRGB::Black);
+			Pixels_Off();
 
 			if(do_send_msg){
 				SendLightStatus(false);
@@ -571,11 +571,8 @@ void Pixels_Blink_One(uint8_t hue, boolean hold, boolean drift){
 	
 	//off --------
 	if(! hold){
-		for(int i=0;i< NUM_LEDS; i++){
-			leds[i] = CRGB::Black;
-		}
+		Pixels_Off();
 	}
-	FastLED.show();
 	Scheduler.delay(anim_time);
 
 	//drift color -------
@@ -670,4 +667,10 @@ void Pixels_Rainbow(uint8_t hue){
 		leds[i] = CHSV(hue + step * i, 255, 255);
 	}
 	FastLED.show();
+}
+
+
+// --------------------------------------------------------------------
+void Pixels_Off(){
+	SetAllLeds(CRGB::Black);
 }
