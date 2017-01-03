@@ -31,8 +31,8 @@
 #define POT_DEBOUNCE 	100		// potentiometer debounce time
 
 #define ATIME_MIN		1		// Anim Minimum ON time (ms) 
-#define ATIME_MAX		300		// Anim Maximum ON time (ms) 
-#define SPEED_DEF		40		// Default Speed
+#define ATIME_MAX		250		// Anim Maximum ON time (ms) 
+#define SPEED_DEF		40		// Default Speed (0-100)
 #define SPEED_STEP		5		// Speed scale quantize
 #define ATIME_OFF 		1		// Anim OFF time (ms) 
 
@@ -459,28 +459,30 @@ void SwitchRelay(boolean state, boolean do_send_msg){
 // --------------------------------------------------------------------
 void leds_sequence(){
 	if(!anim_is_on){return;}
+	Pixels_Up(0, 1,0);		// red, hold
 
-	Pixels_Up(0, 1,0);		// red
+	Anim_Up_Drift(3, 0);	// x3 
 
-	Anim_Up_Drift(3, 0);
+	Anim_Random(100,0);		// x120
 
-	Anim_Random(120,0);
+	Pixels_Up(96, 1,0); 	// green, hold
+	Pixels_Up(gHue, 0,1);	// off, drift
 
-	Pixels_Up(96, 1,0); 		// green
-	Pixels_Up(gHue, 0,1);	// off
-
-	Anim_Random(40,1);
+	Anim_Random(40,1);		// x40, hold
 	
-	Anim_Down_Drift(3,0);
+	Anim_Down_Drift(2,0);	//x2
 
-	Pixels_Down(160, 1,0); 	// blue
-	Pixels_Down(gHue, 0,1);	// off
+	Pixels_Down(160, 1,0); 	// blue, hold
+	Pixels_Down(gHue, 0,1);	// off, drift
 
-	Anim_UpDown_Blink(3,1);
+	Anim_UpDown_Drift(1,1);	// x2, hold
 
-	Anim_Blink(6);
-	Anim_Blink(6);
+	Anim_Blink_Drift(6);	//x6
+	Anim_Blink_Drift(6);	//x6
 
+	Anim_Rainbow(6);		//x10
+
+	Pixels_Up(gHue, 0,1);	// off, drift
 }
 
 // --------------------------------------------------------------------
@@ -509,7 +511,7 @@ void Anim_Down_Drift(int count, boolean hold){
 
 
 // --------------------------------------------------------------------
-void Anim_UpDown_Blink(int count, boolean hold){
+void Anim_UpDown_Drift(int count, boolean hold){
 	for(int i=1;i <= count; i++){
 		Anim_UpDown(gHue, hold,1);
 	}
@@ -525,7 +527,7 @@ void Anim_Random(int count, boolean hold){
 
 
 // --------------------------------------------------------------------
-void Anim_Blink(int count_blinks){
+void Anim_Blink_Drift(int count_blinks){
 	gHueDelta = 255 / count_blinks ;
 	for(int i=1;i <= count_blinks; i++){
 		Pixels_Blink_One(gHue, 0,1);
@@ -538,6 +540,23 @@ void Anim_Blink(int count_blinks){
 void Anim_UpDown(uint8_t hue, boolean hold, boolean drift){
 	Pixels_Up	(hue, hold, drift);
 	Pixels_Down	(hue, hold, drift);
+}
+
+
+// --------------------------------------------------------------------
+void Anim_Rainbow(unsigned int count){
+	unsigned long hue=0;
+	const byte step= ceil(255 / NUM_LEDS );
+	for(int i=0; i< (count * 255 / step) ; i++){
+		if(!anim_is_on){return;}
+
+		if(hue > 4294967295){
+			hue=0;
+		}
+		Pixels_Rainbow(hue);
+		Scheduler.delay(ceil(anim_time / 8) );			
+		hue = hue + step;	
+	}
 }
 
 
@@ -641,4 +660,14 @@ void Pixels_Down(uint8_t hue, boolean hold, boolean drift){
 			gHue=hue;
 		}
 	}
+}
+
+
+// --------------------------------------------------------------------
+void Pixels_Rainbow(uint8_t hue){
+	const byte step= ceil(255 / NUM_LEDS );
+	for(int i=0; i< NUM_LEDS; i++){
+		leds[i] = CHSV(hue + step * i, 255, 255);
+	}
+	FastLED.show();
 }
