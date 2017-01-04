@@ -1,13 +1,13 @@
 {
 	"gh_id": 		"soif/MySensors_ChristmasTree",
 	"name": 		"MySensors ChristmasTree",
-	"baseline": 	"Controls a RGB individually addressable Leds Strip (aka NeoPixel) +  a relay",
+	"baseline": 	"Controls a RGB addressable Leds Strip (aka NeoPixel) +  a relay",
 	"description":	"description.md",
 	"version":		"1.00",
 	"type":			"project",
 	"keywords":		"Christmas Tree, Led Strip, RGB, RGB Led Strip, Relay",
 	"homepage":		"https://www.mysensors.org",
-	"time":			"2016-12-30",	
+	"time":			"2017-01-04",	
 	"license":		"MIT",
 	"authors": [
 		{
@@ -22,5 +22,9 @@
 	"images": [
 	],
 	"hardware": [
+		{
+			"type": "fritzing",
+			"file": "wiring.fzz"
+		}
 	]
 }
