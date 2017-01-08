@@ -2,8 +2,6 @@
 	MySensors ChristmasTree - Version 1.0
 	Copyright 2016 François Déchery
 
-	https://media.readthedocs.org/pdf/mysensors/latest/mysensors.pdf
-
 	Compilation:
 		- needs MySensors version 2.0
 		- works with Arduino IDE 1.6.9, 
