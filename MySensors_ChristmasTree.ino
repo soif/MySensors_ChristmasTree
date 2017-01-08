@@ -1,5 +1,5 @@
 /*
-	MySensors ChristmasTree - Version 1.0
+	MySensors ChristmasTree
 	Copyright 2016 François Déchery
 
 	Compilation:
@@ -32,16 +32,16 @@
 #define ATIME_MAX		250		// Anim Maximum ON time (ms) 
 #define ATIME_OFF 		1		// Anim OFF time (ms) 
 
-#define SPEED_DEF		40		// Default Speed (0-100)
 #define SPEED_STEP		5		// Speed scale quantize
+#define STRIP_SPEED_DEF	40		// Default Strip Speed (0-100)
 
 #define BUT_DEBOUNCE_TIME	100		// Button Debounce Time
 #define BUT_HOLD_TIME 		1500	// Time to hold button before activating the Potentiometer (> DEBOUNCE_TIME)
 
-#define MODE_OFF 		0		// mode Light Off
-#define MODE_ON 		1		// mode Light On
-#define MODE_ANIM 		2		// mode Anim
-#define LAST_MODE 		2		// last light mode
+#define MODE_OFF 			0		// mode Light Off
+#define MODE_ON 			1		// mode Light On
+#define MODE_ANIM 			2		// mode Anim
+#define LAST_STRIP_MODE 	2		// last Strip mode
 
 #define CHILD_ID_STRIP		0
 #define CHILD_ID_STRIP_ANIM	1
@@ -82,7 +82,7 @@ unsigned long 	pot_read_total 		= 0; 				// total potentiometer reading
 unsigned long	pot_last_update 	= millis() +1000;	// potentiometer update time (start delayed)
 boolean			pot_ready 			= false;
 
-byte			anim_speed			= SPEED_DEF;
+byte			anim_speed			= STRIP_SPEED_DEF;
 unsigned int	strip_anim_time		= 0;
 uint8_t 		gHue 				= 0;
 uint8_t			gHueDelta			= HUE_DEF_DELTA;
@@ -128,7 +128,7 @@ void before() {
 	//pinMode(STRIP_LED_PIN,	OUTPUT);
 
 	// -------------------------------
-	Scheduler.startLoop(leds_sequence);
+	Scheduler.startLoop(StripSequence);
 	Scheduler.start();
 
 	DEBUG_PRINTLN("+++ Init End +++");
@@ -356,7 +356,7 @@ void SetStripAnimSpeed(unsigned int speed, boolean do_send_msg){
 // --------------------------------------------------------------------
 void SetStripMode(byte mode, boolean do_send_msg){
 	//rotate mode
-	if(mode > LAST_MODE){
+	if(mode > LAST_STRIP_MODE){
 		mode=MODE_OFF;
 	}
 	
@@ -455,7 +455,7 @@ void SwitchRelay(boolean state, boolean do_send_msg){
 
 
 // --------------------------------------------------------------------
-void leds_sequence(){
+void StripSequence(){
 	if(!strip_anim_on){return;}
 	Pixels_Up(0, 1,0);		// red, hold
 
