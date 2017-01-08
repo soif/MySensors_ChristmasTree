@@ -24,7 +24,6 @@
 //#define MY_REPEATER_FEATURE
 
 #define NUM_LEDS		50 		// FASTLED : How many leds in the strip?
-#define DEBOUNCE_TIME	100		// Button Debounce Time
 #define HUE_DEF_DELTA	2		// Default Hue Delta
 #define POT_READ_COUNT 	100		// potentiometer reading count
 #define POT_READ_PERC	2.0		// new POT read
@@ -35,6 +34,9 @@
 #define SPEED_DEF		40		// Default Speed (0-100)
 #define SPEED_STEP		5		// Speed scale quantize
 #define ATIME_OFF 		1		// Anim OFF time (ms) 
+
+#define BUT_DEBOUNCE_TIME	100		// Button Debounce Time
+#define BUT_HOLD_TIME 		1500	// Time to hold button before activating the Potentiometer (> DEBOUNCE_TIME)
 
 #define MODE_OFF 		0		// mode Light Off
 #define MODE_ON 		1		// mode Light On
@@ -52,7 +54,7 @@
 
 #include "debug.h"
 #include <FastLED.h>	// https://github.com/FastLED/FastLED
-#include <Bounce2.h>	// https://github.com/thomasfredericks/Bounce-Arduino-Wiring
+#include <Button.h>		// https://github.com/JChristensen/Button
 #include <SyncLED.h>	// https://github.com/martin-podlubny/arduino-library-syncled/
 
 #include <SCoop.h>  	// https://github.com/fabriceo/SCoop
@@ -79,7 +81,6 @@ byte			pot_read_index 	= 0;				// the index of the current potentiometer reading
 unsigned long 	pot_read_total 	= 0; 				// total potentiometer reading     
 unsigned long	pot_last_update = millis() +1000;	// potentiometer update time (start delayed)
 boolean			pot_ready 		= false;
-boolean			pot_enable 		= false; //starting state
 
 byte			anim_speed		= SPEED_DEF;
 unsigned int	anim_time		= 0;
@@ -90,11 +91,14 @@ byte			light_mode		= MODE_ANIM;	//starting state (0=off, 1=on, 2=anim)
 boolean			anim_is_on		= false;		//starting state
 boolean			relay_is_on		= false;		//starting state
 
+boolean			but_anim_held	= false;		//when but is held
+boolean			but_relay_held	= false;		//when but is held
+
 CRGB 			leds[NUM_LEDS];					// FASTLED : Define the array of leds
 CRGB 			current_color	= CRGB::Red;	//starting color
 
-Bounce 			debounceButAnim		= Bounce(); 
-Bounce 			debounceButRelay	= Bounce(); 
+Button ButAnim	(BUT_ANIM_PIN,	true,	true,	BUT_DEBOUNCE_TIME);
+Button ButRelay	(BUT_RELAY_PIN,	true,	true,	BUT_DEBOUNCE_TIME);
 
 MyMessage 		msgLight(	CHILD_ID_LIGHT,	V_STATUS);
 MyMessage 		msgAnim(	CHILD_ID_ANIM,	V_PERCENTAGE);
@@ -102,6 +106,7 @@ MyMessage 		msgRelay(	CHILD_ID_RELAY,	V_STATUS);
 //MyMessage 	msgTemp(	CHILD_ID_TEMP,	V_TEMP);
 
 SyncLED AnimLed(ANIM_LED_PIN);
+SyncLED RelayLed(RELAY_LED_PIN);
 
 
 // #######################################################################################
@@ -116,7 +121,6 @@ void before() {
     FastLED.addLeds<WS2811, DATA_PIN, RGB>(leds, NUM_LEDS);
 
 	// Init -----------------------
-	InitButtons();
 	InitPot();
 
 	// Setup Output Pins -----------------------
@@ -139,7 +143,6 @@ void setup() {
 void loop() {
 	UpdateAnimLed();
 	ProcessButtons();
-	ReadSpeedPot();
 	yield();
 }
 
@@ -197,7 +200,6 @@ void receive(const MyMessage &msg){
 		SetAnimSpeed(r_speed, false);
 		SetLightMode(MODE_ANIM , true);
 
-		pot_enable = false;
 		DEBUG_PRINTLN("- Lock Pot.");
 	}
 	else if (msg.sensor==CHILD_ID_RELAY){
@@ -271,15 +273,7 @@ void ReadSpeedPot(){
 	// map to desired speed 
 	unsigned int speed	= map( pot_aver , 0, 255 , 0 , 100);
 
-	// wake up potentiometer control by turning it to min or max
-	if(pot_ready && !pot_enable){
-		if( (anim_speed > 0 && speed == 0) || (anim_speed < 100 && speed == 100)){
-			pot_enable = true;
-			DEBUG_PRINTLN("- Unlock Pot.");
-		}
-	}
-
-	if(pot_enable && pot_ready && speed != anim_speed && ( speed <= anim_speed - SPEED_STEP || speed >= anim_speed + SPEED_STEP || speed == 0 || speed == 100 ) ){
+	if( pot_ready && speed != anim_speed && ( speed <= anim_speed - SPEED_STEP || speed >= anim_speed + SPEED_STEP || speed == 0 || speed == 100 ) ){
 
 		if(millis() > pot_last_update + POT_DEBOUNCE ){
 			pot_last_update = millis();
@@ -307,32 +301,37 @@ void InitPot(){
 }
 
 
-// --------------------------------------------------------------------
-void InitButtons(){
-	pinMode(BUT_ANIM_PIN,INPUT);
-	digitalWrite(BUT_ANIM_PIN,HIGH);   // Activate internal pull-up
-	debounceButAnim.attach(BUT_ANIM_PIN);
-	debounceButAnim.interval(DEBOUNCE_TIME);
-
-	pinMode(BUT_RELAY_PIN,INPUT);
-	digitalWrite(BUT_RELAY_PIN,HIGH);   // Activate internal pull-up
-	debounceButRelay.attach(BUT_RELAY_PIN);
-	debounceButRelay.interval(DEBOUNCE_TIME);
-}
-
 
 // --------------------------------------------------------------------
 void ProcessButtons(){
-	boolean but_changed = debounceButRelay.update();
-	int but_state 		= debounceButRelay.read();
-	if (but_changed && but_state == 0) {
-		SwitchRelay (! relay_is_on, true);
+
+	ButRelay.read();
+	if (ButRelay.wasReleased()) {
+		if(but_relay_held){
+			but_relay_held = false;
+		}
+		else{
+			SwitchRelay (! relay_is_on, true);
+		}
+	}	
+	else if(ButRelay.pressedFor(BUT_HOLD_TIME)){
+		but_relay_held = true;
+		DEBUG_PRINTLN("R Hold");	
 	}
 
-	but_changed =debounceButAnim.update();
-	but_state	=debounceButAnim.read();
-	if (but_changed && but_state == 0) {
-		SetLightMode (light_mode + 1, true);
+	ButAnim.read();
+	if (ButAnim.wasReleased()) {
+		if(but_anim_held){
+			but_anim_held = false;
+		}
+		else{
+			SetLightMode (light_mode + 1, true);
+		}
+	}	
+	else if(ButAnim.pressedFor(BUT_HOLD_TIME)){
+		but_anim_held = true;
+		DEBUG_PRINTLN("A Hold");
+		ReadSpeedPot();
 	}
 }
 
