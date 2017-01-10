@@ -14,9 +14,8 @@
 
 // Define ################################################################################
 #define INFO_NAME "ChristmasTree"
-#define INFO_VERS "1.01"
+#define INFO_VERS "1.10"
 
-#define MY_DEBUG
 #define MY_RADIO_NRF24
 #define MY_NODE_ID 21
 //#define MY_REPEATER_FEATURE
@@ -30,10 +29,14 @@
 
 #define ATIME_MIN		1		// Anim Minimum ON time (ms) 
 #define ATIME_MAX		250		// Anim Maximum ON time (ms) 
-#define ATIME_OFF 		1		// Anim OFF time (ms) 
+
+#define S_ATIME_OFF 	1		// Strip Anim OFF time (ms) 
+#define R_ATIME_OFF 	1		// Relay Anim OFF time (ms) 
 
 #define SPEED_STEP		5		// Speed scale quantize
+
 #define STRIP_SPEED_DEF	40		// Default Strip Speed (0-100)
+#define RELAY_SPEED_DEF	30		// Default Strip Speed (0-100)
 
 #define BUT_DEBOUNCE_TIME	100		// Button Debounce Time
 #define BUT_HOLD_TIME 		1500	// Time to hold button before activating the Potentiometer (> DEBOUNCE_TIME)
@@ -41,11 +44,18 @@
 #define MODE_OFF 			0		// mode Light Off
 #define MODE_ON 			1		// mode Light On
 #define MODE_ANIM 			2		// mode Anim
+
 #define LAST_STRIP_MODE 	2		// last Strip mode
+#define LAST_RELAY_MODE 	2		// last Relay mode
+
+#define BLINK_PATTERN_LENGTH	3	// Status led: Blink Pattern Length
+#define BLINK_PATTERN_DIVISOR	3	// Status led: Blink Pattern Divisor
+
 
 #define CHILD_ID_STRIP		0
 #define CHILD_ID_STRIP_ANIM	1
 #define CHILD_ID_RELAY		2
+#define CHILD_ID_RELAY_ANIM	3
 
 
 // includes ##############################################################################
@@ -65,7 +75,7 @@
 
 // Pins ##################################################################################
 #define DATA_PIN		2		// FASTLED : Data Pin
-#define BUT_ANIM_PIN	8		// Anim Switch Pin (to gnd)
+#define BUT_STRIP_PIN	8		// Anim Switch Pin (to gnd)
 #define BUT_RELAY_PIN	7		// Relay Switch Pin (to gnd)
 
 #define RELAY_PIN		4		// Relay Pin
@@ -76,33 +86,40 @@
 
 // Variables #############################################################################
 float			pot_read 			= 0;
-byte			pot_readings[POT_READ_COUNT];		// all potentiometer reading
+byte			pot_readings[POT_READ_COUNT];			// all potentiometer reading
 byte			pot_read_index 		= 0;				// the index of the current potentiometer reading
 unsigned long 	pot_read_total 		= 0; 				// total potentiometer reading     
 unsigned long	pot_last_update 	= millis() +1000;	// potentiometer update time (start delayed)
 boolean			pot_ready 			= false;
 
-byte			anim_speed			= STRIP_SPEED_DEF;
-unsigned int	strip_anim_time		= 0;
 uint8_t 		gHue 				= 0;
 uint8_t			gHueDelta			= HUE_DEF_DELTA;
+
+byte			strip_mode			= MODE_ANIM;	//strip starting state mode (0=off, 1=on, 2=anim)
+boolean			strip_anim_on		= true;			//strip starting anim state
 boolean			strip_anim_stopping	= 0;
-byte			strip_mode			= MODE_ANIM;	//starting state (0=off, 1=on, 2=anim)
-boolean			strip_anim_on		= false;		//starting state
-boolean			relay_is_on			= false;		//starting state
+byte			strip_speed			= STRIP_SPEED_DEF;
+unsigned int	strip_time			= 0;
 
-boolean			but_strip_held		= false;		//when but is held
-boolean			but_relay_held		= false;		//when but is held
+byte			relay_mode			= MODE_ON;	//relay starting state mode (0=off, 1=on, 2=anim)
+boolean			relay_anim_on		= false;		//relay starting anim state
+boolean			relay_anim_stopping	= 0;
+byte			relay_speed			= RELAY_SPEED_DEF;
+unsigned int	relay_time			= 0;
 
-CRGB 			leds[NUM_LEDS];					// FASTLED : Define the array of leds
+boolean			but_strip_held		= false;		//when strip button is held
+boolean			but_relay_held		= false;		//when relay button is held
+
+CRGB 			leds[NUM_LEDS];						// FASTLED : Define the array of leds
 CRGB 			current_color		= CRGB::Red;	//starting color
 
-Button ButAnim	(BUT_ANIM_PIN,	true,	true,	BUT_DEBOUNCE_TIME);
+Button ButStrip	(BUT_STRIP_PIN,	true,	true,	BUT_DEBOUNCE_TIME);
 Button ButRelay	(BUT_RELAY_PIN,	true,	true,	BUT_DEBOUNCE_TIME);
 
 MyMessage 		msgStrip	(	CHILD_ID_STRIP,			V_STATUS);
 MyMessage 		msgStripAnim(	CHILD_ID_STRIP_ANIM,	V_PERCENTAGE);
 MyMessage 		msgRelay	(	CHILD_ID_RELAY,			V_STATUS);
+MyMessage 		msgRelayAnim(	CHILD_ID_RELAY_ANIM,	V_PERCENTAGE);
 
 SyncLED StripLed(STRIP_LED_PIN);
 SyncLED RelayLed(RELAY_LED_PIN);
@@ -115,7 +132,7 @@ SyncLED RelayLed(RELAY_LED_PIN);
 // --------------------------------------------------------------------
 void before() { 
 	DEBUG_PRINTLN("");
-	DEBUG_PRINTLN("+++ Init Start +++");
+	DEBUG_PRINTLN("+iS");
 
     FastLED.addLeds<WS2811, DATA_PIN, RGB>(leds, NUM_LEDS);
 
@@ -127,20 +144,36 @@ void before() {
 	pinMode(RELAY_LED_PIN,	OUTPUT);
 	//pinMode(STRIP_LED_PIN,	OUTPUT);
 
-	// -------------------------------
-	Scheduler.startLoop(StripSequence);
-	Scheduler.start();
-
-	DEBUG_PRINTLN("+++ Init End +++");
+	DEBUG_PRINTLN("+iE");
 }
 
 // --------------------------------------------------------------------
 void setup() { 
+	DEBUG_PRINTLN("");
+	DEBUG_PRINTLN("=sS");
+
+	// init -------------------------
+	InitSpeed();
+
+	//modes
+	SetMode(strip_mode, true, 0);
+	SetMode(relay_mode, true, 1);
+
+	//leds
+	StripLed.blinkPattern( 0B100UL, strip_time / BLINK_PATTERN_DIVISOR, BLINK_PATTERN_LENGTH );
+	RelayLed.blinkPattern( 0B100UL, relay_time / BLINK_PATTERN_DIVISOR, BLINK_PATTERN_LENGTH );
+
+	// multi Tasking
+	Scheduler.startLoop(SequenceStrip);
+	Scheduler.startLoop(SequenceRelay);
+	Scheduler.start();
+	
+	DEBUG_PRINTLN("=sE");
 }
 
 // --------------------------------------------------------------------
 void loop() {
-	UpdateStripLed();
+	UpdateButtonLeds();
 	ProcessButtons();
 	yield();
 }
@@ -151,86 +184,137 @@ void loop() {
 
 // --------------------------------------------------------------------
 void presentation(){
+	DEBUG_PRINTLN("_pS");
 	sendSketchInfo(INFO_NAME , INFO_VERS );
 
 	present(CHILD_ID_STRIP,			S_RGB_LIGHT);
 	present(CHILD_ID_STRIP_ANIM,	S_DIMMER);
 	present(CHILD_ID_RELAY, 		S_LIGHT);
-	//present(CHILD_ID_TEMP,	S_TEMP);
-
-	DEBUG_PRINTLN("+++ Setup +++");
-
-	// init -------------------------
-	InitSpeed();
-	StripLed.blinkPattern( 0B100UL, strip_anim_time / 3, 3 );
-
-	SetStripMode(strip_mode, true);
-	SwitchRelay(relay_is_on, true);
+	present(CHILD_ID_RELAY_ANIM,	S_DIMMER);
+	DEBUG_PRINTLN("_pE");
 }
-
 
 // --------------------------------------------------------------------
 void receive(const MyMessage &msg){
+	boolean to_relay;
 	DEBUG_PRINTLN("");
 
+	// Strip On/Off
 	if		(msg.sensor==CHILD_ID_STRIP && msg.type == V_STATUS){
 		int r_state = msg.getBool();
-		SetStripMode(r_state, true);
+		to_relay = 0;
+		SetMode(r_state, false, to_relay);
 	}
+	// Strip On/Off RVB
 	else if (msg.sensor==CHILD_ID_STRIP && msg.type == V_RGB){
 		String color_string = msg.getString();
 		DEBUG_PRINT(" -> Set color : ");
 		DEBUG_PRINTLN(color_string);
 		current_color = (long) strtol( &color_string[0], NULL, 16);
 		SetStripPixels(current_color);
-		SetStripMode(MODE_ON , true);
+		to_relay = 0;
+		SetMode(MODE_ON , false, to_relay);
 	}
+	// Strip Anim On/Off
 	else if (msg.sensor==CHILD_ID_STRIP_ANIM && msg.type == V_STATUS){
 		boolean r_state = msg.getBool();
+		to_relay = 0;
 		if(r_state){
-			SetStripMode(MODE_ANIM, true);
+			SetMode(MODE_ANIM, false, to_relay);
 		}
 		else{
-			SetStripMode(MODE_OFF, true);
+			SetMode(MODE_OFF, false, to_relay);
 		}
 	}
+	// Strip Anim Speed
 	else if (msg.sensor==CHILD_ID_STRIP_ANIM && msg.type == V_PERCENTAGE){
 		unsigned int r_speed= msg.getUInt();
-		SetStripAnimSpeed(r_speed, false);
-		SetStripMode(MODE_ANIM , true);
-
-		DEBUG_PRINTLN("- Lock Pot.");
+		to_relay = 0;
+		SetAnimSpeed(r_speed, false, to_relay);
+		SetMode(MODE_ANIM , false, to_relay);
 	}
+
+	// Relay On/Off
 	else if (msg.sensor==CHILD_ID_RELAY){
 		int r_state = msg.getBool();
-		SwitchRelay(r_state, false);
+		to_relay = 1;
+		SetMode(r_state, false, to_relay);
 	}
+
+/*
+	// Relay Anim On/Off
+	else if (msg.sensor==CHILD_ID_RELAY_ANIM && msg.type == V_STATUS){
+		boolean r_state = msg.getBool();
+		to_relay = 1;
+		if(r_state){
+			SetMode(MODE_ANIM, false, to_relay);
+		}
+		else{
+			SetMode(MODE_OFF, false, to_relay);
+		}
+	}
+	// Relay Anim Speed
+	else if (msg.sensor==CHILD_ID_RELAY_ANIM && msg.type == V_PERCENTAGE){
+		unsigned int r_speed= msg.getUInt();
+		to_relay = 1;
+		SetAnimSpeed(r_speed, false, to_relay);
+		SetMode(MODE_ANIM , false, to_relay);
+	}
+*/
+
 	else{
-		DEBUG_PRINTLN("# Msg IGNORED");
+		DEBUG_PRINTLN("# Msg IGNORE");
 	}
 }
 
 // --------------------------------------------------------------------
-void SendStripStatus(unsigned int state){
-	msgStrip.setType(V_STATUS);
-	send(msgStrip.set(state));
+void SendOnOffStatus(unsigned int state, boolean to_relay){
+	switch (to_relay){
+    	case 0:
+			msgStrip.setType(V_STATUS);
+			send(msgStrip.set(state));
+			break;
+    	case 1:
+			msgRelay.setType(V_STATUS);
+			send(msgRelay.set(state));
+			break;
+	}
 }
+
 // --------------------------------------------------------------------
 void SendStripColor(){
 }
+
 // --------------------------------------------------------------------
-void SendStripAnimStatus(unsigned int state){
-	msgStripAnim.setType(V_STATUS);
-	send(msgStripAnim.set(state));
-}
-// --------------------------------------------------------------------
-void SendStripAnimSpeed(unsigned int speed){
-	msgStripAnim.setType(V_PERCENTAGE);
-	send(msgStripAnim.set(speed));
+void SendAnimStatus(unsigned int state, boolean to_relay){
+	switch (to_relay){
+    	case 0:
+			msgStripAnim.setType(V_STATUS);
+			send(msgStripAnim.set(state));
+			break;
+    	case 1:
+			msgRelayAnim.setType(V_STATUS);
+			send(msgRelayAnim.set(state));    		
+			break;
+	}
 }
 
 // --------------------------------------------------------------------
-void UpdateStripLed(){
+void SendAnimSpeed(unsigned int speed, boolean to_relay){
+	switch (to_relay){
+    	case 0:
+			msgStripAnim.setType(V_PERCENTAGE);
+			send(msgStripAnim.set(speed));
+			break;
+    	case 1:
+			msgRelayAnim.setType(V_PERCENTAGE);
+			send(msgRelayAnim.set(speed));    		
+			break;
+	}
+}
+
+// --------------------------------------------------------------------
+void UpdateButtonLeds(){
 	if (strip_mode == MODE_OFF){
 		StripLed.Off();
 	}
@@ -241,23 +325,40 @@ void UpdateStripLed(){
 		StripLed.resumePattern();
 		StripLed.update();
 	}
+
+	if (relay_mode == MODE_OFF){
+		RelayLed.Off();
+	}
+	else if (relay_mode == MODE_ON){
+		RelayLed.On();
+	}
+	else if (relay_mode == MODE_ANIM){
+		RelayLed.resumePattern();
+		RelayLed.update();
+	}
 }
 
 // --------------------------------------------------------------------
 void InitSpeed(){
-	SetStripAnimSpeed(200,false);
-	SetStripAnimSpeed(anim_speed,true);
+	SetAnimSpeed(200,			false,	0);
+	SetAnimSpeed(strip_speed,	true,	0);
+
+	SetAnimSpeed(200,			false,	1);
+	SetAnimSpeed(relay_speed,	true,	1);
 }
 
 
 // --------------------------------------------------------------------
-void ReadSpeedPot(){
+void ReadSpeedPot(boolean to_relay){
 	// remove prev read
 	pot_read_total				= pot_read_total - pot_readings[pot_read_index];
+	
 	// low pass filter
 	pot_read					= (1 - POT_READ_PERC / 100) * pot_read + ( POT_READ_PERC / 100) * analogRead(POT_PIN);
+	
 	// map to byte
 	pot_readings[pot_read_index]= map( pot_read,  0, 1023, 1, 255);
+	
 	// add this read
 	pot_read_total				= pot_read_total + pot_readings[pot_read_index];
 
@@ -269,10 +370,21 @@ void ReadSpeedPot(){
 
 	// average read
 	unsigned int pot_aver	= pot_read_total / POT_READ_COUNT;
+	
 	// map to desired speed 
 	unsigned int speed	= map( pot_aver , 0, 255 , 0 , 100);
 
-	if( pot_ready && speed != anim_speed && ( speed <= anim_speed - SPEED_STEP || speed >= anim_speed + SPEED_STEP || speed == 0 || speed == 100 ) ){
+	unsigned int last_speed	;
+	switch (to_relay){
+		case 0:	
+    		last_speed=strip_speed;
+			break;
+		case 1:	
+			last_speed=relay_speed;
+			break;
+	}
+	
+	if( pot_ready && speed != last_speed && ( speed <= last_speed - SPEED_STEP || speed >= last_speed + SPEED_STEP || speed == 0 || speed == 100 ) ){
 
 		if(millis() > pot_last_update + POT_DEBOUNCE ){
 			pot_last_update = millis();
@@ -280,17 +392,17 @@ void ReadSpeedPot(){
 			//quantize to SPEED_STEP
 			speed = round( speed / SPEED_STEP * SPEED_STEP );
 
-			DEBUG_PRINT("++ P_av=");
+			DEBUG_PRINTLN(".");
+			DEBUG_PRINT("+ Pav=");
 			DEBUG_PRINT(pot_aver);
-			DEBUG_PRINT(", Q_Speed=");
+			DEBUG_PRINT(", Speed=");
 			DEBUG_PRINT( speed );
 			DEBUG_PRINTLN("");
 			
-			SetStripAnimSpeed(speed, true);
+			SetAnimSpeed(speed, true, to_relay);
 		}
 	}
 }
-
 
 // --------------------------------------------------------------------
 void InitPot(){
@@ -299,148 +411,262 @@ void InitPot(){
 	}
 }
 
-
-
 // --------------------------------------------------------------------
 void ProcessButtons(){
+	boolean to_relay;
 
+	// Strip Button
+	ButStrip.read();
+	to_relay=0;
+	if (ButStrip.wasReleased()) {
+		if(but_strip_held){
+			but_strip_held = false;
+		}
+		else{
+			SetMode (strip_mode + 1, true, to_relay);
+		}
+	}	
+	else if(ButStrip.pressedFor(BUT_HOLD_TIME)){
+		but_strip_held = true;
+		//DEBUG_PRINT("sH.");
+		ReadSpeedPot(to_relay);
+	}	
+
+	// Relay Button
 	ButRelay.read();
+	to_relay=1;
 	if (ButRelay.wasReleased()) {
 		if(but_relay_held){
 			but_relay_held = false;
 		}
 		else{
-			SwitchRelay (! relay_is_on, true);
+			SetMode (relay_mode + 1, true, to_relay);
 		}
 	}	
 	else if(ButRelay.pressedFor(BUT_HOLD_TIME)){
 		but_relay_held = true;
-		DEBUG_PRINTLN("R Hold");	
-	}
-
-	ButAnim.read();
-	if (ButAnim.wasReleased()) {
-		if(but_strip_held){
-			but_strip_held = false;
-		}
-		else{
-			SetStripMode (strip_mode + 1, true);
-		}
-	}	
-	else if(ButAnim.pressedFor(BUT_HOLD_TIME)){
-		but_strip_held = true;
-		DEBUG_PRINTLN("A Hold");
-		ReadSpeedPot();
-	}
-}
-
-
-// --------------------------------------------------------------------
-void SetStripAnimSpeed(unsigned int speed, boolean do_send_msg){
-	if( speed != anim_speed ){
-		anim_speed = speed ;
-		strip_anim_time = map(anim_speed, 0, 100, ATIME_MIN, ATIME_MAX) ;
-		
-		StripLed.setRate( strip_anim_time / 3 );
-
-		if(do_send_msg){
-			SendStripAnimSpeed(anim_speed);
-		}
-		DEBUG_PRINT(" -> Speed ");
-		DEBUG_PRINT(anim_speed);
-		DEBUG_PRINT(" to time ");
-		DEBUG_PRINTLN(strip_anim_time);
+		//DEBUG_PRINT("rH.");	
+		ReadSpeedPot(to_relay);
 	}
 }
 
 // --------------------------------------------------------------------
-void SetStripMode(byte mode, boolean do_send_msg){
-	//rotate mode
-	if(mode > LAST_STRIP_MODE){
-		mode=MODE_OFF;
+void SetAnimSpeed(unsigned int speed, boolean do_send_msg, boolean to_relay){
+	switch (to_relay){
+    	case 0:
+			if( speed != strip_speed ){
+				strip_speed = speed ;
+				strip_time = map( strip_speed, 0, 100, ATIME_MIN, ATIME_MAX) ;		
+				StripLed.setRate( strip_time / BLINK_PATTERN_DIVISOR );
+
+				DEBUG_PRINT(" -> S.Speed ");
+				DEBUG_PRINT(strip_speed);
+				DEBUG_PRINT(" to time ");
+				DEBUG_PRINTLN(strip_time);
+				if(do_send_msg){
+					SendAnimSpeed(strip_speed, to_relay);
+				}
+			}
+			break;
+
+    	case 1:
+			if( speed != relay_speed ){
+				relay_speed = speed ;
+				relay_time = map( relay_speed, 0, 100, ATIME_MIN, ATIME_MAX) ;		
+				RelayLed.setRate( relay_time / BLINK_PATTERN_DIVISOR );
+
+				DEBUG_PRINT(" -> R.Speed ");
+				DEBUG_PRINT(relay_speed);
+				DEBUG_PRINT(" to time ");
+				DEBUG_PRINTLN(relay_time);
+				if(do_send_msg){
+					SendAnimSpeed(relay_speed, to_relay);
+				}
+			}
+			break;
 	}
+}
+
+// --------------------------------------------------------------------
+void SetMode(byte mode, boolean do_send_msg, boolean to_relay){
 	
-	DEBUG_PRINT(" -> Set Mode ");	
-	DEBUG_PRINTLN(mode);	
+	DEBUG_PRINT(" -> Set ");	
+	byte last_mode;
 
-	if(mode == MODE_OFF){
-		DEBUG_PRINTLN(" -> Light OFF");	
-		strip_anim_on =false;
+	switch (to_relay){
 
-		if (strip_mode == MODE_ON){
-			Pixels_Off();
-
-			if(do_send_msg){
-				SendStripStatus(false);
-				//SendStripAnimStatus(false);
+    	case 0:
+			//rotate mode
+			if(mode > LAST_STRIP_MODE){
+				mode=MODE_OFF;
 			}
-		}
-		else if (strip_mode == MODE_ANIM){
+    		last_mode=strip_mode;
+			DEBUG_PRINT("Strip Mode to ");
+			DEBUG_PRINT(mode);	
+
+			if(mode == MODE_OFF){
+				DEBUG_PRINTLN(" OFF");	
+				strip_anim_on =false;
+
+				if (last_mode == MODE_ON){
+					Pixels_Off();
+
+					if(do_send_msg){
+						SendOnOffStatus(false, to_relay);
+						//SendAnimStatus(false, to_relay);
+					}
+				}
+				else if (last_mode == MODE_ANIM){
 			
-			if(! strip_anim_stopping){
-				strip_anim_stopping =1;
-				Scheduler.delay(ATIME_MAX + ATIME_OFF + 50);
-				Pixels_Off();
-				strip_anim_stopping =0;
+					if(! strip_anim_stopping){
+						strip_anim_stopping =1;
+						Scheduler.delay(ATIME_MAX + S_ATIME_OFF + 50);
+						Pixels_Off();
+						strip_anim_stopping =0;
+					}
+
+					if(do_send_msg){
+						SendOnOffStatus(false, to_relay);
+						SendAnimStatus(false, to_relay);
+					}			
+				}
 			}
 
-			if(do_send_msg){
-				SendStripStatus(false);
-				SendStripAnimStatus(false);
-			}			
-		}
+			else if (mode == MODE_ON){
+				DEBUG_PRINTLN(" ON");	
+				strip_anim_on =false;
+
+				if(last_mode == MODE_OFF){
+					SetStripPixels(current_color);
+
+					if(do_send_msg){
+						SendOnOffStatus(true, to_relay);
+						//SendAnimStatus(false, to_relay);
+					}
+				}	
+				else if (last_mode == MODE_ANIM){
+					if(do_send_msg){
+						SendOnOffStatus(true, to_relay);
+						SendAnimStatus(false, to_relay);
+					}
+				}
+			}
+			
+			else if (mode == MODE_ANIM){
+				DEBUG_PRINTLN(" ANIM");	
+				strip_anim_on = true;
+
+				if(last_mode == MODE_OFF){
+					Pixels_Off();
+
+					if(do_send_msg){
+						//SendOnOffStatus(false, to_relay);
+						SendAnimStatus(true, to_relay);
+					}
+				}
+				else if (last_mode == MODE_ON){
+					Pixels_Off();
+
+					if(do_send_msg){
+						SendOnOffStatus(false, to_relay);
+						//SendAnimStatus(true, to_relay);
+					}
+				}
+			}
+			strip_mode = mode;
+			break;
+
+		// -----------------
+    	case 1:
+			//rotate mode
+			if(mode > LAST_RELAY_MODE){
+				mode=MODE_OFF;
+			}
+
+    		last_mode=relay_mode;    		
+			DEBUG_PRINT("Relay Mode to ");	
+			DEBUG_PRINT(mode);	
+
+			if(mode == MODE_OFF){
+				DEBUG_PRINTLN(" OFF");	
+				relay_anim_on =false;
+
+				if (last_mode == MODE_ON){
+					SwitchRelay(false);
+
+					if(do_send_msg){
+						SendOnOffStatus(false, to_relay);
+						//SendAnimStatus(false, to_relay);
+					}
+				}
+				else if (last_mode == MODE_ANIM){
+			
+					if(! relay_anim_stopping){
+						relay_anim_stopping =1;
+						Scheduler.delay(ATIME_MAX + R_ATIME_OFF + 50);
+						SwitchRelay(false);
+						relay_anim_stopping =0;
+					}
+
+					if(do_send_msg){
+						SendOnOffStatus(false, to_relay);
+						SendAnimStatus(false, to_relay);
+					}			
+				}
+			}
+
+			else if (mode == MODE_ON){
+				DEBUG_PRINTLN(" ON");	
+				relay_anim_on =false;
+
+				if(last_mode == MODE_OFF){
+					SwitchRelay(true);
+
+					if(do_send_msg){
+						SendOnOffStatus(true, to_relay);
+						//SendAnimStatus(false, to_relay);
+					}
+				}	
+				else if (last_mode == MODE_ANIM){
+					if(! relay_anim_stopping){
+						relay_anim_stopping =1;
+						Scheduler.delay(ATIME_MAX + R_ATIME_OFF + 50);
+						SwitchRelay(true);
+						relay_anim_stopping =0;
+					}
+
+					if(do_send_msg){
+						SendOnOffStatus(true, to_relay);
+						SendAnimStatus(false, to_relay);
+					}
+				}
+			}
+			else if (mode == MODE_ANIM){
+				DEBUG_PRINTLN(" ANIM");	
+				relay_anim_on = true;
+
+				if(last_mode == MODE_OFF){
+
+					if(do_send_msg){
+						//SendOnOffStatus(false, to_relay);
+						SendAnimStatus(true, to_relay);
+					}
+				}
+				else if (last_mode == MODE_ON){
+
+					if(do_send_msg){
+						SendOnOffStatus(false, to_relay);
+						//SendAnimStatus(true, to_relay);
+					}
+				}
+			}
+			relay_mode = mode;
+			break;
 	}
-
-	else if (mode == MODE_ON){
-		DEBUG_PRINTLN(" -> Light ON");	
-		strip_anim_on =false;
-
-		if(strip_mode == MODE_OFF){
-			SetStripPixels(current_color);
-
-			if(do_send_msg){
-				SendStripStatus(true);
-				//SendStripAnimStatus(false);
-			}
-		}	
-		else if (strip_mode == MODE_ANIM){
-			if(do_send_msg){
-				SendStripStatus(true);
-				SendStripAnimStatus(false);
-			}
-		}
-	}
-	else if (mode == MODE_ANIM){
-		DEBUG_PRINTLN(" -> Light ANIM");	
-		strip_anim_on = true;
-
-		if(strip_mode == MODE_OFF){
-			Pixels_Off();
-
-			if(do_send_msg){
-				//SendStripStatus(false);
-				SendStripAnimStatus(true);
-			}
-		}
-		else if (strip_mode == MODE_ON){
-			Pixels_Off();
-
-			if(do_send_msg){
-				SendStripStatus(false);
-				//SendStripAnimStatus(true);
-			}
-		}
-	}
-	strip_mode = mode;
 }
 
-
 // --------------------------------------------------------------------
-void SwitchRelay(boolean state, boolean do_send_msg){
-	relay_is_on = state;
-	if(do_send_msg){
-		send(msgRelay.set(relay_is_on));
-	}
+void SwitchRelay(boolean state){
 	if(state){
 		DEBUG_PRINTLN(" -> Relay ON");
 		digitalWrite(RELAY_PIN,		HIGH);
@@ -453,9 +679,8 @@ void SwitchRelay(boolean state, boolean do_send_msg){
 	}
 }
 
-
 // --------------------------------------------------------------------
-void StripSequence(){
+void SequenceStrip(){
 	if(!strip_anim_on){return;}
 	Pixels_Up(0, 1,0);		// red, hold
 
@@ -484,13 +709,17 @@ void StripSequence(){
 }
 
 // --------------------------------------------------------------------
+void SequenceRelay(){
+	Scheduler.delay(ceil(relay_time) );
+}
+
+// --------------------------------------------------------------------
 void SetStripPixels( CRGB color ){
 	for(int i=0;i< NUM_LEDS; i++){
 		leds[i] = color;
 	}
 	FastLED.show();
 }
-
 
 // --------------------------------------------------------------------
 void StripAnim_Up_Drift(int count, boolean hold){
@@ -499,14 +728,12 @@ void StripAnim_Up_Drift(int count, boolean hold){
 	}
 }
 
-
 // --------------------------------------------------------------------
 void StripAnim_Down_Drift(int count, boolean hold){
 	for(int i=1;i <= count; i++){
 		Pixels_Down(gHue, hold,1);
 	}
 }
-
 
 // --------------------------------------------------------------------
 void StripAnim_UpDown_Drift(int count, boolean hold){
@@ -515,14 +742,12 @@ void StripAnim_UpDown_Drift(int count, boolean hold){
 	}
 }
 
-
 // --------------------------------------------------------------------
 void StripAnim_Random(int count, boolean hold){
 	for(int i=1;i <= count ; i++){
 		Pixels_Random(0,hold);
 	}
 }
-
 
 // --------------------------------------------------------------------
 void StripAnim_Blink_Drift(int count_blinks){
@@ -533,13 +758,11 @@ void StripAnim_Blink_Drift(int count_blinks){
 	gHueDelta = HUE_DEF_DELTA;
 }
 
-
 // --------------------------------------------------------------------
 void StripAnim_UpDown(uint8_t hue, boolean hold, boolean drift){
 	Pixels_Up	(hue, hold, drift);
 	Pixels_Down	(hue, hold, drift);
 }
-
 
 // --------------------------------------------------------------------
 void StripAnim_Rainbow(unsigned int count){
@@ -552,11 +775,10 @@ void StripAnim_Rainbow(unsigned int count){
 			hue=0;
 		}
 		Pixels_Rainbow(hue);
-		Scheduler.delay(ceil(strip_anim_time / 8) );			
+		Scheduler.delay(ceil(strip_time / 8) );			
 		hue = hue + step;	
 	}
 }
-
 
 // --------------------------------------------------------------------
 void Pixels_Blink_One(uint8_t hue, boolean hold, boolean drift){
@@ -565,13 +787,13 @@ void Pixels_Blink_One(uint8_t hue, boolean hold, boolean drift){
 		leds[i] = CHSV(hue, 255, 255);
 	}
 	FastLED.show();
-	Scheduler.delay(strip_anim_time * 2);
+	Scheduler.delay(strip_time * 2);
 	
 	//off --------
 	if(! hold){
 		Pixels_Off();
 	}
-	Scheduler.delay(strip_anim_time);
+	Scheduler.delay(strip_time);
 
 	//drift color -------
 	if(drift){
@@ -579,7 +801,6 @@ void Pixels_Blink_One(uint8_t hue, boolean hold, boolean drift){
 		gHue=hue;
 	}
 }
-
 
 // --------------------------------------------------------------------
 void Pixels_Random(uint8_t hue, boolean hold){
@@ -593,16 +814,15 @@ void Pixels_Random(uint8_t hue, boolean hold){
 	// on --------------------------
 	leds[i] = CHSV(hue, 255, 255);
 	FastLED.show();
-	Scheduler.delay(strip_anim_time);
+	Scheduler.delay(strip_time);
 
 	//off --------
 	if(! hold){
 		leds[i] = CRGB::Black;
 		FastLED.show();
-		Scheduler.delay(ATIME_OFF);
+		Scheduler.delay(S_ATIME_OFF);
 	}
 }
-
 
 // --------------------------------------------------------------------
 void Pixels_Up(uint8_t hue, boolean hold, boolean drift){
@@ -613,13 +833,13 @@ void Pixels_Up(uint8_t hue, boolean hold, boolean drift){
 		// on --------------------------
 		leds[i] = CHSV(hue, 255, 255);
 		FastLED.show();
-		Scheduler.delay(strip_anim_time);
+		Scheduler.delay(strip_time);
 
 		//off --------
 		if(! hold){
 			leds[i] = CRGB::Black;
 			FastLED.show();
-			Scheduler.delay(ATIME_OFF);
+			Scheduler.delay(S_ATIME_OFF);
 		}
 
 		//drift color -------
@@ -629,7 +849,6 @@ void Pixels_Up(uint8_t hue, boolean hold, boolean drift){
 		}
 	}
 }
-
 
 // --------------------------------------------------------------------
 void Pixels_Down(uint8_t hue, boolean hold, boolean drift){
@@ -640,13 +859,13 @@ void Pixels_Down(uint8_t hue, boolean hold, boolean drift){
 		// on --------------------------
 		leds[i] = CHSV(hue, 255, 255);
 		FastLED.show();
-		Scheduler.delay(strip_anim_time);
+		Scheduler.delay(strip_time);
 
 		//off --------
 		if(! hold){
 			leds[i] = CRGB::Black;
 			FastLED.show();
-			Scheduler.delay(ATIME_OFF);
+			Scheduler.delay(S_ATIME_OFF);
 		}
 
 		//drift color -------
@@ -657,7 +876,6 @@ void Pixels_Down(uint8_t hue, boolean hold, boolean drift){
 	}
 }
 
-
 // --------------------------------------------------------------------
 void Pixels_Rainbow(uint8_t hue){
 	const byte step= ceil(255 / NUM_LEDS );
@@ -666,7 +884,6 @@ void Pixels_Rainbow(uint8_t hue){
 	}
 	FastLED.show();
 }
-
 
 // --------------------------------------------------------------------
 void Pixels_Off(){
