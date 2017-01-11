@@ -208,7 +208,7 @@ void receive(const MyMessage &msg){
 	// Strip On/Off RVB
 	else if (msg.sensor==CHILD_ID_STRIP && msg.type == V_RGB){
 		String color_string = msg.getString();
-		DEBUG_PRINT(" -> Set color : ");
+		DEBUG_PRINT(" -> Set Color: ");
 		DEBUG_PRINTLN(color_string);
 		current_color = (long) strtol( &color_string[0], NULL, 16);
 		SetStripPixels(current_color);
@@ -459,9 +459,9 @@ void SetAnimSpeed(unsigned int speed, boolean do_send_msg, boolean to_relay){
 				strip_time = map( strip_speed, 0, 100, ATIME_MIN, ATIME_MAX) ;		
 				StripLed.setRate( strip_time / BLINK_PATTERN_DIVISOR );
 
-				DEBUG_PRINT(" -> S.Speed ");
+				DEBUG_PRINT(" -> S.Speed=");
 				DEBUG_PRINT(strip_speed);
-				DEBUG_PRINT(" to time ");
+				DEBUG_PRINT(" , time=");
 				DEBUG_PRINTLN(strip_time);
 				if(do_send_msg){
 					SendAnimSpeed(strip_speed, to_relay);
@@ -475,9 +475,9 @@ void SetAnimSpeed(unsigned int speed, boolean do_send_msg, boolean to_relay){
 				relay_time = map( relay_speed, 0, 100, ATIME_MIN, ATIME_MAX) ;		
 				RelayLed.setRate( relay_time / BLINK_PATTERN_DIVISOR );
 
-				DEBUG_PRINT(" -> R.Speed ");
+				DEBUG_PRINT(" -> R.Speed=");
 				DEBUG_PRINT(relay_speed);
-				DEBUG_PRINT(" to time ");
+				DEBUG_PRINT(" , time=");
 				DEBUG_PRINTLN(relay_time);
 				if(do_send_msg){
 					SendAnimSpeed(relay_speed, to_relay);
@@ -501,11 +501,11 @@ void SetMode(byte mode, boolean do_send_msg, boolean to_relay){
 				mode=MODE_OFF;
 			}
     		last_mode=strip_mode;
-			DEBUG_PRINT("Strip Mode to ");
+			DEBUG_PRINT("Strip Mode: ");
 			DEBUG_PRINT(mode);	
 
 			if(mode == MODE_OFF){
-				DEBUG_PRINTLN(" OFF");	
+				DEBUG_PRINTLN("OFF");	
 				strip_anim_on =false;
 
 				if (last_mode == MODE_ON){
@@ -533,7 +533,7 @@ void SetMode(byte mode, boolean do_send_msg, boolean to_relay){
 			}
 
 			else if (mode == MODE_ON){
-				DEBUG_PRINTLN(" ON");	
+				DEBUG_PRINTLN("ON");	
 				strip_anim_on =false;
 
 				if(last_mode == MODE_OFF){
@@ -553,7 +553,7 @@ void SetMode(byte mode, boolean do_send_msg, boolean to_relay){
 			}
 			
 			else if (mode == MODE_ANIM){
-				DEBUG_PRINTLN(" ANIM");	
+				DEBUG_PRINTLN("ANIM");	
 				strip_anim_on = true;
 
 				if(last_mode == MODE_OFF){
@@ -584,11 +584,11 @@ void SetMode(byte mode, boolean do_send_msg, boolean to_relay){
 			}
 
     		last_mode=relay_mode;    		
-			DEBUG_PRINT("Relay Mode to ");	
+			DEBUG_PRINT("Relay Mode: ");	
 			DEBUG_PRINT(mode);	
 
 			if(mode == MODE_OFF){
-				DEBUG_PRINTLN(" OFF");	
+				DEBUG_PRINTLN("OFF");	
 				relay_anim_on =false;
 
 				if (last_mode == MODE_ON){
@@ -616,7 +616,7 @@ void SetMode(byte mode, boolean do_send_msg, boolean to_relay){
 			}
 
 			else if (mode == MODE_ON){
-				DEBUG_PRINTLN(" ON");	
+				DEBUG_PRINTLN("ON");	
 				relay_anim_on =false;
 
 				if(last_mode == MODE_OFF){
@@ -642,7 +642,7 @@ void SetMode(byte mode, boolean do_send_msg, boolean to_relay){
 				}
 			}
 			else if (mode == MODE_ANIM){
-				DEBUG_PRINTLN(" ANIM");	
+				DEBUG_PRINTLN("ANIM");	
 				relay_anim_on = true;
 
 				if(last_mode == MODE_OFF){
