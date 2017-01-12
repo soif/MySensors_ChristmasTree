@@ -14,7 +14,7 @@
 
 // Define ################################################################################
 #define INFO_NAME "ChristmasTree"
-#define INFO_VERS "1.50"
+#define INFO_VERS "2.00"
 
 #define MY_RADIO_NRF24
 #define MY_NODE_ID 21
