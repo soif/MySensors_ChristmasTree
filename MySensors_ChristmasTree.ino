@@ -335,9 +335,11 @@ void UpdateButtonLeds(){
 
 	if (relay_mode == MODE_OFF){
 		RelayLed.Off();
+		RelayOut.Off();
 	}
 	else if (relay_mode == MODE_ON){
 		RelayLed.On();
+		RelayOut.On();
 	}
 	else if (relay_mode == MODE_ANIM){
 		RelayLed.resumePattern();
