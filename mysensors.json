@@ -7,8 +7,8 @@
 	"type":			"project",
 	"keywords":		"Christmas Tree, Led Strip, Garland, RGB, SSR, Solid State Relay, Relay",
 	"homepage":		"https://www.mysensors.org",
-	"time":			"2017-01-12",	
-	"license":		"MIT",
+	"time":			"2017-01-13",	
+	"license":		"GPL-2.0",
 	"authors": [
 		{
 			"name":		"Francois Dechery",
