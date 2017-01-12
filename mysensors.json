@@ -5,7 +5,7 @@
 	"description":	"description.md",
 	"version":		"1.50",
 	"type":			"project",
-	"keywords":		"Christmas Tree, Led Strip, RGB, RGB Led Strip, Relay",
+	"keywords":		"Christmas Tree, Led Strip, RGB, RGB Led Strip, SSR, Relay",
 	"homepage":		"https://www.mysensors.org",
 	"time":			"2017-01-12",	
 	"license":		"MIT",
@@ -20,6 +20,14 @@
 		}
 	],
 	"images": [
+		{
+			"type": "schematic",
+			"file": "schematic.png"
+		},
+		{
+			"type": "wiring",
+			"file": "wiring.png"
+		}
 	],
 	"hardware": [
 		{

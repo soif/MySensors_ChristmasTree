@@ -22,6 +22,10 @@ This [MySensors](https://www.mysensors.org/)  node provides the following featur
  - In animation mode, turning the potentiometer WHILE keeping the button held, changes its animation speed
 
 
-## Schematic and Wiring
+## Schematic
+![schematic](images/schematic.png)
 
-soon
+
+## Proto Wiring
+![wiring](images/wiring.png)
+
