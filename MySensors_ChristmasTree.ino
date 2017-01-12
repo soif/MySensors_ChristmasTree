@@ -76,8 +76,8 @@
 #endif
 
 // Pins ##################################################################################
-#define DATA_PIN		A2		// FASTLED : Data Pin
-#define RELAY_PIN		A3		// Relay Pin
+#define DATA_PIN		A3		// FASTLED : Data Pin
+#define RELAY_PIN		A2		// Relay Pin
 
 #define STRIP_LED_PIN 	5		// Strip Led Pin
 #define RELAY_LED_PIN	6		// Relay Led Pin
