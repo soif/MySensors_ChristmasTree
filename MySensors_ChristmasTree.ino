@@ -76,13 +76,14 @@
 #endif
 
 // Pins ##################################################################################
-#define DATA_PIN		2		// FASTLED : Data Pin
-#define BUT_STRIP_PIN	8		// Anim Switch Pin (to gnd)
-#define BUT_RELAY_PIN	7		// Relay Switch Pin (to gnd)
+#define DATA_PIN		A2		// FASTLED : Data Pin
+#define RELAY_PIN		A3		// Relay Pin
 
-#define RELAY_PIN		4		// Relay Pin
 #define STRIP_LED_PIN 	5		// Strip Led Pin
 #define RELAY_LED_PIN	6		// Relay Led Pin
+
+#define BUT_STRIP_PIN	8		// Anim Switch Pin (to gnd)
+#define BUT_RELAY_PIN	7		// Relay Switch Pin (to gnd)
 
 #define POT_PIN 		A0		// Potentiomenter Pin
 
