@@ -20,25 +20,25 @@
 #define MY_NODE_ID 21
 //#define MY_REPEATER_FEATURE
 
-#define NUM_LEDS		50 			// FASTLED : How many leds in the strip?
-#define HUE_DEF_DELTA	2			// Default Hue Delta
+#define NUM_LEDS			50 		// FASTLED : How many leds in the strip?
+#define HUE_DEF_DELTA		2		// Default Hue Delta
 
-#define POT_READ_COUNT 	100			// potentiometer reading count
-#define POT_READ_PERC	2.0			// new POT read
-#define POT_DEBOUNCE 	100			// potentiometer debounce time
+#define POT_READ_COUNT 		100		// potentiometer reading count
+#define POT_READ_PERC		2.0		// new POT read
+#define POT_DEBOUNCE 		100		// potentiometer debounce time
 
-#define S_ATIME_MIN		1			// Strip Anim Minimum ON time (ms) 
-#define S_ATIME_MAX		200			// Strip Anim Maximum ON time (ms) 
-#define S_ATIME_OFF 	1			// Strip Anim OFF time (ms) 
+#define S_ATIME_MIN			1		// Strip Anim Minimum ON time (ms) 
+#define S_ATIME_MAX			200		// Strip Anim Maximum ON time (ms) 
+#define S_ATIME_OFF 		1		// Strip Anim OFF time (ms) 
 
-#define R_ATIME_MIN		40			// Relay Anim Minimum ON time (ms) 
-#define R_ATIME_MAX		100			// Relay Anim Maximum ON time (ms) 
-#define R_ATIME_OFF 	1			// Relay Anim OFF time (ms) 
+#define R_ATIME_MIN			40		// Relay Anim Minimum ON time (ms) 
+#define R_ATIME_MAX			100		// Relay Anim Maximum ON time (ms) 
+#define R_ATIME_OFF 		1		// Relay Anim OFF time (ms) 
 
-#define SPEED_STEP		5			// Speed scale quantize
+#define SPEED_STEP			5		// Speed scale quantize
 
-#define STRIP_SPEED_DEF	40			// Default Strip Speed (0-100)
-#define RELAY_SPEED_DEF	40			// Default Strip Speed (0-100)
+#define STRIP_SPEED_DEF		40		// Default Strip Speed (0-100)
+#define RELAY_SPEED_DEF		40		// Default Strip Speed (0-100)
 
 #define BUT_DEBOUNCE_TIME	100		// Button Debounce Time
 #define BUT_HOLD_TIME 		1500	// Time to hold button before activating the Potentiometer (> DEBOUNCE_TIME)
