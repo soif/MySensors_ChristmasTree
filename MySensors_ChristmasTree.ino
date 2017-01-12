@@ -14,29 +14,31 @@
 
 // Define ################################################################################
 #define INFO_NAME "ChristmasTree"
-#define INFO_VERS "1.10"
+#define INFO_VERS "1.50"
 
 #define MY_RADIO_NRF24
 #define MY_NODE_ID 21
 //#define MY_REPEATER_FEATURE
 
-#define NUM_LEDS		50 		// FASTLED : How many leds in the strip?
-#define HUE_DEF_DELTA	2		// Default Hue Delta
+#define NUM_LEDS		50 			// FASTLED : How many leds in the strip?
+#define HUE_DEF_DELTA	2			// Default Hue Delta
 
-#define POT_READ_COUNT 	100		// potentiometer reading count
-#define POT_READ_PERC	2.0		// new POT read
-#define POT_DEBOUNCE 	100		// potentiometer debounce time
+#define POT_READ_COUNT 	100			// potentiometer reading count
+#define POT_READ_PERC	2.0			// new POT read
+#define POT_DEBOUNCE 	100			// potentiometer debounce time
 
-#define ATIME_MIN		1		// Anim Minimum ON time (ms) 
-#define ATIME_MAX		250		// Anim Maximum ON time (ms) 
+#define S_ATIME_MIN		1			// Strip Anim Minimum ON time (ms) 
+#define S_ATIME_MAX		200			// Strip Anim Maximum ON time (ms) 
+#define S_ATIME_OFF 	1			// Strip Anim OFF time (ms) 
 
-#define S_ATIME_OFF 	1		// Strip Anim OFF time (ms) 
-#define R_ATIME_OFF 	1		// Relay Anim OFF time (ms) 
+#define R_ATIME_MIN		40			// Relay Anim Minimum ON time (ms) 
+#define R_ATIME_MAX		100			// Relay Anim Maximum ON time (ms) 
+#define R_ATIME_OFF 	1			// Relay Anim OFF time (ms) 
 
-#define SPEED_STEP		5		// Speed scale quantize
+#define SPEED_STEP		5			// Speed scale quantize
 
-#define STRIP_SPEED_DEF	40		// Default Strip Speed (0-100)
-#define RELAY_SPEED_DEF	30		// Default Strip Speed (0-100)
+#define STRIP_SPEED_DEF	40			// Default Strip Speed (0-100)
+#define RELAY_SPEED_DEF	40			// Default Strip Speed (0-100)
 
 #define BUT_DEBOUNCE_TIME	100		// Button Debounce Time
 #define BUT_HOLD_TIME 		1500	// Time to hold button before activating the Potentiometer (> DEBOUNCE_TIME)
@@ -50,7 +52,7 @@
 
 #define BLINK_PATTERN_LENGTH	3	// Status led: Blink Pattern Length
 #define BLINK_PATTERN_DIVISOR	3	// Status led: Blink Pattern Divisor
-
+#define RELAY_PATTERN_LENGTH	12	// Relay Pattern bit length
 
 #define CHILD_ID_STRIP		0
 #define CHILD_ID_STRIP_ANIM	1
@@ -101,9 +103,8 @@ boolean			strip_anim_stopping	= 0;
 byte			strip_speed			= STRIP_SPEED_DEF;
 unsigned int	strip_time			= 0;
 
-byte			relay_mode			= MODE_ON;	//relay starting state mode (0=off, 1=on, 2=anim)
-boolean			relay_anim_on		= false;		//relay starting anim state
-boolean			relay_anim_stopping	= 0;
+byte			relay_mode			= MODE_OFF;	//relay starting state mode (0=off, 1=on, 2=anim)
+boolean			relay_anim_on		= false;			//relay starting anim state
 byte			relay_speed			= RELAY_SPEED_DEF;
 unsigned int	relay_time			= 0;
 
@@ -123,6 +124,8 @@ MyMessage 		msgRelayAnim(	CHILD_ID_RELAY_ANIM,	V_PERCENTAGE);
 
 SyncLED StripLed(STRIP_LED_PIN);
 SyncLED RelayLed(RELAY_LED_PIN);
+
+SyncLED RelayOut(RELAY_PIN);
 
 
 // #######################################################################################
@@ -155,21 +158,26 @@ void setup() {
 	// init -------------------------
 	InitSpeed();
 
-	//modes
-	SetMode(strip_mode, true, 0);
-	SetMode(relay_mode, true, 1);
-
-	//leds
+	// leds
 	StripLed.blinkPattern( 0B100UL, strip_time / BLINK_PATTERN_DIVISOR, BLINK_PATTERN_LENGTH );
-	RelayLed.blinkPattern( 0B100UL, relay_time / BLINK_PATTERN_DIVISOR, BLINK_PATTERN_LENGTH );
+	RelayLed.blinkPattern( 0B110000000000UL, relay_time, RELAY_PATTERN_LENGTH );
+	// relay
+	RelayOut.blinkPattern( 0B110000000000UL, relay_time, RELAY_PATTERN_LENGTH );
 
 	// multi Tasking
 	Scheduler.startLoop(SequenceStrip);
 	Scheduler.startLoop(SequenceRelay);
 	Scheduler.start();
+
+	//let time to register
+	Scheduler.delay(5000);
+	//modes
+	SetMode(strip_mode, true, 0);
+	SetMode(relay_mode, true, 1);
 	
 	DEBUG_PRINTLN("=sE");
 }
+
 
 // --------------------------------------------------------------------
 void loop() {
@@ -191,6 +199,7 @@ void presentation(){
 	present(CHILD_ID_STRIP_ANIM,	S_DIMMER);
 	present(CHILD_ID_RELAY, 		S_LIGHT);
 	present(CHILD_ID_RELAY_ANIM,	S_DIMMER);
+
 	DEBUG_PRINTLN("_pE");
 }
 
@@ -240,8 +249,6 @@ void receive(const MyMessage &msg){
 		to_relay = 1;
 		SetMode(r_state, false, to_relay);
 	}
-
-/*
 	// Relay Anim On/Off
 	else if (msg.sensor==CHILD_ID_RELAY_ANIM && msg.type == V_STATUS){
 		boolean r_state = msg.getBool();
@@ -260,7 +267,6 @@ void receive(const MyMessage &msg){
 		SetAnimSpeed(r_speed, false, to_relay);
 		SetMode(MODE_ANIM , false, to_relay);
 	}
-*/
 
 	else{
 		DEBUG_PRINTLN("# Msg IGNORE");
@@ -335,6 +341,8 @@ void UpdateButtonLeds(){
 	else if (relay_mode == MODE_ANIM){
 		RelayLed.resumePattern();
 		RelayLed.update();
+		RelayOut.resumePattern();
+		RelayOut.update();
 	}
 }
 
@@ -456,7 +464,7 @@ void SetAnimSpeed(unsigned int speed, boolean do_send_msg, boolean to_relay){
     	case 0:
 			if( speed != strip_speed ){
 				strip_speed = speed ;
-				strip_time = map( strip_speed, 0, 100, ATIME_MIN, ATIME_MAX) ;		
+				strip_time = map( strip_speed, 0, 100, S_ATIME_MIN, S_ATIME_MAX) ;		
 				StripLed.setRate( strip_time / BLINK_PATTERN_DIVISOR );
 
 				DEBUG_PRINT(" -> S.Speed=");
@@ -472,8 +480,9 @@ void SetAnimSpeed(unsigned int speed, boolean do_send_msg, boolean to_relay){
     	case 1:
 			if( speed != relay_speed ){
 				relay_speed = speed ;
-				relay_time = map( relay_speed, 0, 100, ATIME_MIN, ATIME_MAX) ;		
-				RelayLed.setRate( relay_time / BLINK_PATTERN_DIVISOR );
+				relay_time = map( relay_speed, 0, 100, S_ATIME_MIN, S_ATIME_MAX) ;		
+				RelayLed.setRate( relay_time );
+				RelayOut.setRate( relay_time );
 
 				DEBUG_PRINT(" -> R.Speed=");
 				DEBUG_PRINT(relay_speed);
@@ -502,7 +511,7 @@ void SetMode(byte mode, boolean do_send_msg, boolean to_relay){
 			}
     		last_mode=strip_mode;
 			DEBUG_PRINT("Strip Mode: ");
-			DEBUG_PRINT(mode);	
+			//DEBUG_PRINT(mode);	
 
 			if(mode == MODE_OFF){
 				DEBUG_PRINTLN("OFF");	
@@ -520,7 +529,7 @@ void SetMode(byte mode, boolean do_send_msg, boolean to_relay){
 			
 					if(! strip_anim_stopping){
 						strip_anim_stopping =1;
-						Scheduler.delay(ATIME_MAX + S_ATIME_OFF + 50);
+						Scheduler.delay(S_ATIME_MAX + S_ATIME_OFF + 50);
 						Pixels_Off();
 						strip_anim_stopping =0;
 					}
@@ -585,14 +594,13 @@ void SetMode(byte mode, boolean do_send_msg, boolean to_relay){
 
     		last_mode=relay_mode;    		
 			DEBUG_PRINT("Relay Mode: ");	
-			DEBUG_PRINT(mode);	
+			//DEBUG_PRINT(mode);	
 
 			if(mode == MODE_OFF){
 				DEBUG_PRINTLN("OFF");	
 				relay_anim_on =false;
 
 				if (last_mode == MODE_ON){
-					SwitchRelay(false);
 
 					if(do_send_msg){
 						SendOnOffStatus(false, to_relay);
@@ -601,13 +609,6 @@ void SetMode(byte mode, boolean do_send_msg, boolean to_relay){
 				}
 				else if (last_mode == MODE_ANIM){
 			
-					if(! relay_anim_stopping){
-						relay_anim_stopping =1;
-						Scheduler.delay(ATIME_MAX + R_ATIME_OFF + 50);
-						SwitchRelay(false);
-						relay_anim_stopping =0;
-					}
-
 					if(do_send_msg){
 						SendOnOffStatus(false, to_relay);
 						SendAnimStatus(false, to_relay);
@@ -620,7 +621,6 @@ void SetMode(byte mode, boolean do_send_msg, boolean to_relay){
 				relay_anim_on =false;
 
 				if(last_mode == MODE_OFF){
-					SwitchRelay(true);
 
 					if(do_send_msg){
 						SendOnOffStatus(true, to_relay);
@@ -628,12 +628,6 @@ void SetMode(byte mode, boolean do_send_msg, boolean to_relay){
 					}
 				}	
 				else if (last_mode == MODE_ANIM){
-					if(! relay_anim_stopping){
-						relay_anim_stopping =1;
-						Scheduler.delay(ATIME_MAX + R_ATIME_OFF + 50);
-						SwitchRelay(true);
-						relay_anim_stopping =0;
-					}
 
 					if(do_send_msg){
 						SendOnOffStatus(true, to_relay);
@@ -664,7 +658,7 @@ void SetMode(byte mode, boolean do_send_msg, boolean to_relay){
 			break;
 	}
 }
-
+/*
 // --------------------------------------------------------------------
 void SwitchRelay(boolean state){
 	if(state){
@@ -678,7 +672,7 @@ void SwitchRelay(boolean state){
 		digitalWrite(RELAY_LED_PIN,	LOW);
 	}
 }
-
+*/
 // --------------------------------------------------------------------
 void SequenceStrip(){
 	if(!strip_anim_on){return;}
@@ -710,7 +704,20 @@ void SequenceStrip(){
 
 // --------------------------------------------------------------------
 void SequenceRelay(){
-	Scheduler.delay(ceil(relay_time) );
+	RelayPattern(0B111100111100UL, 4);
+	RelayPattern(0B111011101110UL, 2);
+	RelayPattern(0B000011000011UL, 4);
+	RelayPattern(0B101010101010UL, 1);
+}
+
+// --------------------------------------------------------------------
+void RelayPattern(unsigned long pattern, byte count){
+	if(!relay_anim_on){
+		return;
+	}
+	RelayLed.setPattern(pattern, RELAY_PATTERN_LENGTH);
+	RelayOut.setPattern(pattern, RELAY_PATTERN_LENGTH);
+	Scheduler.delay(ceil(relay_time * RELAY_PATTERN_LENGTH * count) );
 }
 
 // --------------------------------------------------------------------
