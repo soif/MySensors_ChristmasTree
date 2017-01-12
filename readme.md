@@ -1,6 +1,6 @@
 # MySensors Christmas Tree
 
-This [MySensors](https://www.mysensors.org/)  node controls a (5V) led strip, aka NeoPixels (based on WS2811 chips or similars) as well as one SSR (aka discrete Relay) output. Both output can be set OFF, ON, and  Animation mode.
+This [MySensors](https://www.mysensors.org/)  node controls a (5V) led strip, aka NeoPixels (based on WS2811 chips or similars) as well as one SSR (aka Solid State Relay) output. Both output can be set OFF, ON, and  Animation mode.
 Animation mode chains various sequences for the Led Strip output, and some blink patterns for the SSR output.
 
 It allows the following features :
