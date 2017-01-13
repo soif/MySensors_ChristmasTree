@@ -3,7 +3,7 @@
 	Copyright 2016 François Déchery
 
 	Compilation:
-		- needs MySensors version 2.0
+		- needs MySensors version 2.0+
 		- works with Arduino IDE 1.6.9, 
 		- Fails with Arduino IDE 1.6.10 and 1.6.12
 */
@@ -14,7 +14,7 @@
 
 // Define ################################################################################
 #define INFO_NAME "ChristmasTree"
-#define INFO_VERS "2.00"
+#define INFO_VERS "2.1.00"
 
 #define MY_RADIO_NRF24
 #define MY_NODE_ID 21
