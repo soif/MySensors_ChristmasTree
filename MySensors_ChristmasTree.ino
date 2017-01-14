@@ -32,12 +32,12 @@
 #define POT_READ_PERC		2.0		// new POT read
 #define POT_DEBOUNCE 		100		// potentiometer debounce time
 
-#define S_ATIME_MIN			1		// Strip Anim Minimum ON time (ms) 
-#define S_ATIME_MAX			200		// Strip Anim Maximum ON time (ms) 
+#define S_ATIME_MIN			20		// Strip Anim Minimum ON time (ms) 
+#define S_ATIME_MAX			500		// Strip Anim Maximum ON time (ms) 
 #define S_ATIME_OFF 		1		// Strip Anim OFF time (ms) 
 
-#define R_ATIME_MIN			40		// Relay Anim Minimum ON time (ms) 
-#define R_ATIME_MAX			100		// Relay Anim Maximum ON time (ms) 
+#define R_ATIME_MIN			50		// Relay Anim Minimum ON time (ms) 
+#define R_ATIME_MAX			500		// Relay Anim Maximum ON time (ms) 
 #define R_ATIME_OFF 		1		// Relay Anim OFF time (ms) 
 
 #define SPEED_STEP			5		// Speed scale quantize
@@ -493,7 +493,7 @@ void SetAnimSpeed(unsigned int speed, boolean do_send_msg, boolean to_relay){
     	case 1:
 			if( speed != relay_speed ){
 				relay_speed = speed ;
-				relay_time = map( relay_speed, 0, 100, S_ATIME_MIN, S_ATIME_MAX) ;		
+				relay_time = map( relay_speed, 0, 100, R_ATIME_MIN, R_ATIME_MAX) ;		
 				RelayLed.setRate( relay_time );
 				RelayOut.setRate( relay_time );
 
