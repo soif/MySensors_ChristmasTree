@@ -37,8 +37,8 @@
 
 #define SPEED_STEP			5		// Speed scale quantize
 
-#define STRIP_SPEED_DEF		40		// Default Strip Speed (0-100)
-#define RELAY_SPEED_DEF		40		// Default Strip Speed (0-100)
+#define STRIP_SPEED_DEF		50		// Default Strip Speed (0-100)
+#define RELAY_SPEED_DEF		50		// Default Relay Speed (0-100)
 
 #define BUT_DEBOUNCE_TIME	100		// Button Debounce Time
 #define BUT_HOLD_TIME 		1500	// Time to hold button before activating the Potentiometer (> DEBOUNCE_TIME)
@@ -46,9 +46,14 @@
 #define MODE_OFF 			0		// mode Light Off
 #define MODE_ON 			1		// mode Light On
 #define MODE_ANIM 			2		// mode Anim
+#define MODE_INIT 			7		// startup state
 
 #define LAST_STRIP_MODE 	2		// last Strip mode
 #define LAST_RELAY_MODE 	2		// last Relay mode
+
+#define STRIP_MODE_DEF		MODE_ANIM	// Strip starting mode (0=off, 1=on, 2=anim)
+#define RELAY_MODE_DEF		MODE_ON		// Relay starting mode (0=off, 1=on, 2=anim)
+
 
 #define BLINK_PATTERN_LENGTH	3	// Status led: Blink Pattern Length
 #define BLINK_PATTERN_DIVISOR	3	// Status led: Blink Pattern Divisor
@@ -98,15 +103,15 @@ boolean			pot_ready 			= false;
 uint8_t 		gHue 				= 0;
 uint8_t			gHueDelta			= HUE_DEF_DELTA;
 
-byte			strip_mode			= MODE_ANIM;		//strip starting state mode (0=off, 1=on, 2=anim)
-boolean			strip_anim_on		= true;				//strip starting anim state
+byte			strip_mode			= MODE_INIT;		//strip current mode
+boolean			strip_anim_on		= true;				//strip current anim state
 boolean			strip_anim_stopping	= 0;
-byte			strip_speed			= STRIP_SPEED_DEF;
+byte			strip_speed			= 0;
 unsigned int	strip_time			= 0;
 
-byte			relay_mode			= MODE_OFF;			//relay starting state mode (0=off, 1=on, 2=anim)
-boolean			relay_anim_on		= false;			//relay starting anim state
-byte			relay_speed			= RELAY_SPEED_DEF;
+byte			relay_mode			= MODE_INIT;		//relay current mode
+boolean			relay_anim_on		= false;			//relay current anim state
+byte			relay_speed			= 0;
 unsigned int	relay_time			= 0;
 
 boolean			but_strip_held		= false;			//when strip button is held
@@ -190,13 +195,13 @@ void loop() {
 void SendInitialtMsg(){
 	if (init_msg_sent == false && isTransportReady() ) {
 	   	init_msg_sent = true;
-		Scheduler.delay(4000);
+		Scheduler.delay(200);
 		
-		//modes
-		SetMode(strip_mode, true, 0);
-		SetMode(relay_mode, true, 1);
-		
-		InitSpeed();
+		//Set defaults
+		SetMode(STRIP_MODE_DEF, true, 0);
+		SetMode(RELAY_MODE_DEF, true, 1);
+		SetAnimSpeed(STRIP_SPEED_DEF,	true,	0);
+		SetAnimSpeed(RELAY_SPEED_DEF,	true,	1);
    	}
 }
 
@@ -356,12 +361,6 @@ void UpdateButtonLeds(){
 		RelayOut.resumePattern();
 		RelayOut.update();
 	}
-}
-
-// --------------------------------------------------------------------
-void InitSpeed(){
-	SetAnimSpeed(strip_speed,	true,	0);
-	SetAnimSpeed(relay_speed,	true,	1);
 }
 
 
@@ -548,6 +547,13 @@ void SetMode(byte mode, boolean do_send_msg, boolean to_relay){
 						SendAnimStatus(false, to_relay);
 					}			
 				}
+				else if(last_mode == MODE_INIT){
+					Pixels_Off();
+					if(do_send_msg){
+						SendOnOffStatus(false, to_relay);
+						SendAnimStatus(false, to_relay);
+					}			
+				}
 			}
 
 			else if (mode == MODE_ON){
@@ -567,6 +573,13 @@ void SetMode(byte mode, boolean do_send_msg, boolean to_relay){
 						SendOnOffStatus(true, to_relay);
 						SendAnimStatus(false, to_relay);
 					}
+				}
+				else if(last_mode == MODE_INIT){
+					SetStripPixels(current_color);
+					if(do_send_msg){
+						SendOnOffStatus(true, to_relay);
+						SendAnimStatus(false, to_relay);
+					}			
 				}
 			}
 			
@@ -590,6 +603,14 @@ void SetMode(byte mode, boolean do_send_msg, boolean to_relay){
 						//SendAnimStatus(true, to_relay);
 					}
 				}
+				else if(last_mode == MODE_INIT){
+					Pixels_Off();
+					if(do_send_msg){
+						SendOnOffStatus(false, to_relay);
+						SendAnimStatus(true, to_relay);
+					}			
+				}
+
 			}
 			strip_mode = mode;
 			break;
@@ -623,6 +644,12 @@ void SetMode(byte mode, boolean do_send_msg, boolean to_relay){
 						SendAnimStatus(false, to_relay);
 					}			
 				}
+				else if(last_mode == MODE_INIT){
+					if(do_send_msg){
+						SendOnOffStatus(false, to_relay);
+						SendAnimStatus(false, to_relay);
+					}			
+				}
 			}
 
 			else if (mode == MODE_ON){
@@ -643,6 +670,12 @@ void SetMode(byte mode, boolean do_send_msg, boolean to_relay){
 						SendAnimStatus(false, to_relay);
 					}
 				}
+				else if(last_mode == MODE_INIT){
+					if(do_send_msg){
+						SendOnOffStatus(true, to_relay);
+						SendAnimStatus(false, to_relay);
+					}			
+				}
 			}
 			else if (mode == MODE_ANIM){
 				DEBUG_PRINTLN("ANIM");	
@@ -661,6 +694,12 @@ void SetMode(byte mode, boolean do_send_msg, boolean to_relay){
 						SendOnOffStatus(false, to_relay);
 						//SendAnimStatus(true, to_relay);
 					}
+				}
+				else if(last_mode == MODE_INIT){
+					if(do_send_msg){
+						SendOnOffStatus(false, to_relay);
+						SendAnimStatus(true, to_relay);
+					}			
 				}
 			}
 			relay_mode = mode;
