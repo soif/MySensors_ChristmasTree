@@ -9,7 +9,7 @@
 */
 
 // debug #################################################################################
-#define MY_DEBUG	// Comment/uncomment to remove/show debug (May overflow ProMini memory when set)
+#define MY_DEBUG	// Comment/uncomment to remove/show debug (May overflow Arduino memory when set)
 
 
 // Define ################################################################################
@@ -98,22 +98,24 @@ boolean			pot_ready 			= false;
 uint8_t 		gHue 				= 0;
 uint8_t			gHueDelta			= HUE_DEF_DELTA;
 
-byte			strip_mode			= MODE_ANIM;	//strip starting state mode (0=off, 1=on, 2=anim)
-boolean			strip_anim_on		= true;			//strip starting anim state
+byte			strip_mode			= MODE_ANIM;		//strip starting state mode (0=off, 1=on, 2=anim)
+boolean			strip_anim_on		= true;				//strip starting anim state
 boolean			strip_anim_stopping	= 0;
 byte			strip_speed			= STRIP_SPEED_DEF;
 unsigned int	strip_time			= 0;
 
-byte			relay_mode			= MODE_OFF;	//relay starting state mode (0=off, 1=on, 2=anim)
+byte			relay_mode			= MODE_OFF;			//relay starting state mode (0=off, 1=on, 2=anim)
 boolean			relay_anim_on		= false;			//relay starting anim state
 byte			relay_speed			= RELAY_SPEED_DEF;
 unsigned int	relay_time			= 0;
 
-boolean			but_strip_held		= false;		//when strip button is held
-boolean			but_relay_held		= false;		//when relay button is held
+boolean			but_strip_held		= false;			//when strip button is held
+boolean			but_relay_held		= false;			//when relay button is held
 
-CRGB 			leds[NUM_LEDS];						// FASTLED : Define the array of leds
-CRGB 			current_color		= CRGB::Red;	//starting color
+boolean 		init_msg_sent 		= false;			// initial msg has been sent
+
+CRGB 			leds[NUM_LEDS];							// FASTLED : Define the array of leds
+CRGB 			current_color		= CRGB::Red;		//starting color
 
 Button ButStrip	(BUT_STRIP_PIN,	true,	true,	BUT_DEBOUNCE_TIME);
 Button ButRelay	(BUT_RELAY_PIN,	true,	true,	BUT_DEBOUNCE_TIME);
@@ -136,7 +138,7 @@ SyncLED RelayOut(RELAY_PIN);
 // --------------------------------------------------------------------
 void before() { 
 	DEBUG_PRINTLN("");
-	DEBUG_PRINTLN("+iS");
+	DEBUG_PRINTLN("+bS");
 
     FastLED.addLeds<WS2811, DATA_PIN, RGB>(leds, NUM_LEDS);
 
@@ -148,16 +150,13 @@ void before() {
 	pinMode(RELAY_LED_PIN,	OUTPUT);
 	//pinMode(STRIP_LED_PIN,	OUTPUT);
 
-	DEBUG_PRINTLN("+iE");
+	DEBUG_PRINTLN("+bE");
 }
 
 // --------------------------------------------------------------------
 void setup() { 
 	DEBUG_PRINTLN("");
 	DEBUG_PRINTLN("=sS");
-
-	// init -------------------------
-	InitSpeed();
 
 	// leds
 	StripLed.blinkPattern( 0B100UL, strip_time / BLINK_PATTERN_DIVISOR, BLINK_PATTERN_LENGTH );
@@ -169,12 +168,6 @@ void setup() {
 	Scheduler.startLoop(SequenceStrip);
 	Scheduler.startLoop(SequenceRelay);
 	Scheduler.start();
-
-	//let time to register
-	Scheduler.delay(5000);
-	//modes
-	SetMode(strip_mode, true, 0);
-	SetMode(relay_mode, true, 1);
 	
 	DEBUG_PRINTLN("=sE");
 }
@@ -182,6 +175,8 @@ void setup() {
 
 // --------------------------------------------------------------------
 void loop() {
+	SendInitialtMsg();
+
 	UpdateButtonLeds();
 	ProcessButtons();
 	yield();
@@ -190,6 +185,20 @@ void loop() {
 
 
 // FUNCTIONS #############################################################################
+
+// --------------------------------------------------------------------
+void SendInitialtMsg(){
+	if (init_msg_sent == false && isTransportReady() ) {
+	   	init_msg_sent = true;
+		Scheduler.delay(4000);
+		
+		//modes
+		SetMode(strip_mode, true, 0);
+		SetMode(relay_mode, true, 1);
+		
+		InitSpeed();
+   	}
+}
 
 // --------------------------------------------------------------------
 void presentation(){
@@ -351,10 +360,7 @@ void UpdateButtonLeds(){
 
 // --------------------------------------------------------------------
 void InitSpeed(){
-	SetAnimSpeed(200,			false,	0);
 	SetAnimSpeed(strip_speed,	true,	0);
-
-	SetAnimSpeed(200,			false,	1);
 	SetAnimSpeed(relay_speed,	true,	1);
 }
 
