@@ -1,11 +1,16 @@
 /*
 	MySensors ChristmasTree
+	https://github.com/soif/MySensors_ChristmasTree
 	Copyright 2016 François Déchery
 
-	Compilation:
+	** Description **
+	This Arduino Nano based project is a MySensors  node which controls a led strip, as well as one SSR output. 
+	Both output can be set OFF, ON, and  Animation mode.
+
+	** Compilation **
 		- needs MySensors version 2.0+
 		- works with Arduino IDE 1.6.9, 
-		- Fails with Arduino IDE 1.6.10 and 1.6.12
+		- Fails with Arduino IDE 1.6.10 and 1.6.12 (due to incompatibilities with the SCoop library)
 */
 
 // debug #################################################################################
