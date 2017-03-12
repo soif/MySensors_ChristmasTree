@@ -23,9 +23,12 @@ Animation mode chains various sequences for the Led Strip output, and some blink
 ![schematic](images/schematic.png)
 
 
-## Proto Wiring
+## Wiring
 ![wiring](images/wiring.png)
 
+## Images
+![Box](images/img_box.jpg)
+![OpenBox](images/img_open.jpg)
 
 
 ## License
