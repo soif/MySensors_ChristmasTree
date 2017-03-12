@@ -21,8 +21,11 @@
 #define INFO_NAME "ChristmasTree"
 #define INFO_VERS "2.1.00"
 
+// MySensors
 #define MY_RADIO_NRF24
 #define MY_NODE_ID 21
+#define MY_TRANSPORT_WAIT_READY_MS 5000	//set how long to wait for transport ready. in milliseconds
+//#define MY_TRANSPORT_SANITY_CHECK
 //#define MY_REPEATER_FEATURE
 
 #define NUM_LEDS			50 		// FASTLED : How many leds in the strip?
@@ -298,11 +301,11 @@ void SendOnOffStatus(unsigned int state, boolean to_relay){
 	switch (to_relay){
     	case 0:
 			msgStrip.setType(V_STATUS);
-			send(msgStrip.set(state));
+			send(msgStrip.set(state), false);
 			break;
     	case 1:
 			msgRelay.setType(V_STATUS);
-			send(msgRelay.set(state));
+			send(msgRelay.set(state), false);
 			break;
 	}
 }
@@ -316,11 +319,11 @@ void SendAnimStatus(unsigned int state, boolean to_relay){
 	switch (to_relay){
     	case 0:
 			msgStripAnim.setType(V_STATUS);
-			send(msgStripAnim.set(state));
+			send(msgStripAnim.set(state), false);
 			break;
     	case 1:
 			msgRelayAnim.setType(V_STATUS);
-			send(msgRelayAnim.set(state));    		
+			send(msgRelayAnim.set(state), false);    		
 			break;
 	}
 }
@@ -330,11 +333,11 @@ void SendAnimSpeed(unsigned int speed, boolean to_relay){
 	switch (to_relay){
     	case 0:
 			msgStripAnim.setType(V_PERCENTAGE);
-			send(msgStripAnim.set(speed));
+			send(msgStripAnim.set(speed), false);
 			break;
     	case 1:
 			msgRelayAnim.setType(V_PERCENTAGE);
-			send(msgRelayAnim.set(speed));    		
+			send(msgRelayAnim.set(speed), false);    		
 			break;
 	}
 }
