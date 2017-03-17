@@ -1,3 +1,5 @@
+#include <Arduino.h>
+
 /*
 	MySensors ChristmasTree
 	https://github.com/soif/MySensors_ChristmasTree
