@@ -10,7 +10,7 @@
 	Both output can be set OFF, ON, and  Animation mode.
 
 	** Compilation **
-		- needs MySensors version 2.0+
+		- needs MySensors version 2.11+
 */
 
 // debug #################################################################################
@@ -19,7 +19,7 @@
 
 // Define ################################################################################
 #define INFO_NAME "ChristmasTree"
-#define INFO_VERS "2.1.00"
+#define INFO_VERS "2.11.01"
 
 // MySensors
 #define MY_RADIO_NRF24
