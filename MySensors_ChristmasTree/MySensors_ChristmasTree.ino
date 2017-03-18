@@ -11,8 +11,6 @@
 
 	** Compilation **
 		- needs MySensors version 2.0+
-		- works with Arduino IDE 1.6.9,
-		- Fails with Arduino IDE 1.6.10 and 1.6.12 (due to incompatibilities with the SCoop library)
 */
 
 // debug #################################################################################
@@ -76,25 +74,22 @@
 
 
 // includes ##############################################################################
+#include "debug.h"
 #include <SPI.h>
 #include <MySensors.h>
-
-#include "debug.h"
 #include <FastLED.h>	// https://github.com/FastLED/FastLED
 #include <SyncLED.h>	// https://github.com/martin-podlubny/arduino-library-syncled/
-#include <SCoop.h>	// https://github.com/fabriceo/SCoop
-#include <Button.h>		// https://github.com/JChristensen/Button
+#include <SCoop.h>		// https://github.com/fabriceo/SCoop
+
+// be SURE to use THIS Button Library
+#include <Button.h>						// https://github.com/JChristensen/Button
 //#include "lib/Button/Button.h"		// https://github.com/JChristensen/Button
-#if defined(SCoopANDROIDMODE) && (SCoopANDROIDMODE == 1)
-#else
-#error " --> You must set the parameter SCoopANDROIDMODE to 1 at the begining of SCoop.h"
-#endif
 
 // Pins ##################################################################################
 #define DATA_PIN		A3		// FASTLED : Data Pin
 #define RELAY_PIN		A2		// Relay Pin
 
-#define STRIP_LED_PIN 	5		// Strip Led Pin
+#define STRIP_LED_PIN	5		// Strip Led Pin
 #define RELAY_LED_PIN	6		// Relay Led Pin
 
 #define BUT_STRIP_PIN	8		// Anim Switch Pin (to gnd)
