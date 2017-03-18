@@ -87,7 +87,7 @@
 //#include "lib/Button/Button.h"		// https://github.com/JChristensen/Button
 #if defined(SCoopANDROIDMODE) && (SCoopANDROIDMODE == 1)
 #else
-#error " --> You must set de parameter SCoopANDROIDMODE to 1 at the begining of "SCoop.h"
+#error " --> You must set the parameter SCoopANDROIDMODE to 1 at the begining of SCoop.h"
 #endif
 
 // Pins ##################################################################################
@@ -833,7 +833,7 @@ void StripAnim_UpDown(uint8_t hue, boolean hold, boolean drift){
 void StripAnim_Rainbow(unsigned int count){
 	unsigned long hue=0;
 	const byte step= ceil(255 / NUM_LEDS );
-	for(int i=0; i< (count * 255 / step) ; i++){
+	for(unsigned int i=0; i< (count * 255 / step) ; i++){
 		if(!strip_anim_on){return;}
 
 		if(hue > 4294967295){
