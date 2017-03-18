@@ -1,0 +1,6 @@
+[submodule "MySensors_ChristmasTree/lib/SCoop"]
+	path = MySensors_ChristmasTree/lib/SCoop
+	url = https://soif@github.com/soif/SCoop.git
+[submodule "MySensors_ChristmasTree/lib/Button"]
+	path = MySensors_ChristmasTree/lib/Button
+	url = https://github.com/JChristensen/Button.git

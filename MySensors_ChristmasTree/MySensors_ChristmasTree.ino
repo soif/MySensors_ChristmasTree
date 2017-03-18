@@ -1,16 +1,16 @@
+#include <Arduino.h>
+
 /*
 	MySensors ChristmasTree
 	https://github.com/soif/MySensors_ChristmasTree
 	Copyright 2016 François Déchery
 
 	** Description **
-	This Arduino Nano based project is a MySensors  node which controls a led strip, as well as one SSR output. 
+	This Arduino Nano based project is a MySensors  node which controls a led strip, as well as one SSR output.
 	Both output can be set OFF, ON, and  Animation mode.
 
 	** Compilation **
-		- needs MySensors version 2.0+
-		- works with Arduino IDE 1.6.9, 
-		- Fails with Arduino IDE 1.6.10 and 1.6.12 (due to incompatibilities with the SCoop library)
+		- needs MySensors version 2.11+
 */
 
 // debug #################################################################################
@@ -19,7 +19,7 @@
 
 // Define ################################################################################
 #define INFO_NAME "ChristmasTree"
-#define INFO_VERS "2.10.00"
+#define INFO_VERS "2.11.01"
 
 // MySensors
 #define MY_RADIO_NRF24
@@ -35,13 +35,13 @@
 #define POT_READ_PERC		2.0		// new POT read
 #define POT_DEBOUNCE 		100		// potentiometer debounce time
 
-#define S_ATIME_MIN			20		// Strip Anim Minimum ON time (ms) 
-#define S_ATIME_MAX			500		// Strip Anim Maximum ON time (ms) 
-#define S_ATIME_OFF 		1		// Strip Anim OFF time (ms) 
+#define S_ATIME_MIN			20		// Strip Anim Minimum ON time (ms)
+#define S_ATIME_MAX			500		// Strip Anim Maximum ON time (ms)
+#define S_ATIME_OFF 		1		// Strip Anim OFF time (ms)
 
-#define R_ATIME_MIN			50		// Relay Anim Minimum ON time (ms) 
-#define R_ATIME_MAX			500		// Relay Anim Maximum ON time (ms) 
-#define R_ATIME_OFF 		1		// Relay Anim OFF time (ms) 
+#define R_ATIME_MIN			50		// Relay Anim Minimum ON time (ms)
+#define R_ATIME_MAX			500		// Relay Anim Maximum ON time (ms)
+#define R_ATIME_OFF 		1		// Relay Anim OFF time (ms)
 
 #define SPEED_STEP			5		// Speed scale quantize
 
@@ -74,25 +74,22 @@
 
 
 // includes ##############################################################################
+#include "debug.h"
 #include <SPI.h>
 #include <MySensors.h>
-
-#include "debug.h"
 #include <FastLED.h>	// https://github.com/FastLED/FastLED
-#include <Button.h>		// https://github.com/JChristensen/Button
 #include <SyncLED.h>	// https://github.com/martin-podlubny/arduino-library-syncled/
+#include <SCoop.h>		// https://github.com/fabriceo/SCoop
 
-#include <SCoop.h>  	// https://github.com/fabriceo/SCoop
-#if defined(SCoopANDROIDMODE) && (SCoopANDROIDMODE == 1)
-#else
-#error " --> You must set de parameter SCoopANDROIDMODE to 1 at the begining of "SCoop.h"
-#endif
+// be SURE to use THIS Button Library
+#include <Button.h>						// https://github.com/JChristensen/Button
+//#include "lib/Button/Button.h"		// https://github.com/JChristensen/Button
 
 // Pins ##################################################################################
 #define DATA_PIN		A3		// FASTLED : Data Pin
 #define RELAY_PIN		A2		// Relay Pin
 
-#define STRIP_LED_PIN 	5		// Strip Led Pin
+#define STRIP_LED_PIN	5		// Strip Led Pin
 #define RELAY_LED_PIN	6		// Relay Led Pin
 
 #define BUT_STRIP_PIN	8		// Anim Switch Pin (to gnd)
@@ -104,7 +101,7 @@
 float			pot_read 			= 0;
 byte			pot_readings[POT_READ_COUNT];			// all potentiometer reading
 byte			pot_read_index 		= 0;				// the index of the current potentiometer reading
-unsigned long 	pot_read_total 		= 0; 				// total potentiometer reading     
+unsigned long 	pot_read_total 		= 0; 				// total potentiometer reading
 unsigned long	pot_last_update 	= millis() +1000;	// potentiometer update time (start delayed)
 boolean			pot_ready 			= false;
 
@@ -149,7 +146,7 @@ SyncLED RelayOut(RELAY_PIN);
 // #######################################################################################
 
 // --------------------------------------------------------------------
-void before() { 
+void before() {
 	DEBUG_PRINTLN("");
 	DEBUG_PRINTLN("+bS");
 
@@ -167,7 +164,7 @@ void before() {
 }
 
 // --------------------------------------------------------------------
-void setup() { 
+void setup() {
 	DEBUG_PRINTLN("");
 	DEBUG_PRINTLN("=sS");
 
@@ -181,7 +178,7 @@ void setup() {
 	Scheduler.startLoop(SequenceStrip);
 	Scheduler.startLoop(SequenceRelay);
 	Scheduler.start();
-	
+
 	DEBUG_PRINTLN("=sE");
 }
 
@@ -204,7 +201,7 @@ void SendInitialtMsg(){
 	if (init_msg_sent == false && isTransportReady() ) {
 	   	init_msg_sent = true;
 		Scheduler.delay(200);
-		
+
 		//Set defaults
 		SetMode(STRIP_MODE_DEF, true, 0);
 		SetMode(RELAY_MODE_DEF, true, 1);
@@ -323,7 +320,7 @@ void SendAnimStatus(unsigned int state, boolean to_relay){
 			break;
     	case 1:
 			msgRelayAnim.setType(V_STATUS);
-			send(msgRelayAnim.set(state), false);    		
+			send(msgRelayAnim.set(state), false);
 			break;
 	}
 }
@@ -337,7 +334,7 @@ void SendAnimSpeed(unsigned int speed, boolean to_relay){
 			break;
     	case 1:
 			msgRelayAnim.setType(V_PERCENTAGE);
-			send(msgRelayAnim.set(speed), false);    		
+			send(msgRelayAnim.set(speed), false);
 			break;
 	}
 }
@@ -376,13 +373,13 @@ void UpdateButtonLeds(){
 void ReadSpeedPot(boolean to_relay){
 	// remove prev read
 	pot_read_total				= pot_read_total - pot_readings[pot_read_index];
-	
+
 	// low pass filter
 	pot_read					= (1 - POT_READ_PERC / 100) * pot_read + ( POT_READ_PERC / 100) * analogRead(POT_PIN);
-	
+
 	// map to byte
 	pot_readings[pot_read_index]= map( pot_read,  0, 1023, 1, 255);
-	
+
 	// add this read
 	pot_read_total				= pot_read_total + pot_readings[pot_read_index];
 
@@ -394,20 +391,20 @@ void ReadSpeedPot(boolean to_relay){
 
 	// average read
 	unsigned int pot_aver	= pot_read_total / POT_READ_COUNT;
-	
-	// map to desired speed 
+
+	// map to desired speed
 	unsigned int speed	= map( pot_aver , 0, 255 , 0 , 100);
 
 	unsigned int last_speed	;
 	switch (to_relay){
-		case 0:	
+		case 0:
     		last_speed=strip_speed;
 			break;
-		case 1:	
+		case 1:
 			last_speed=relay_speed;
 			break;
 	}
-	
+
 	if( pot_ready && speed != last_speed && ( speed <= last_speed - SPEED_STEP || speed >= last_speed + SPEED_STEP || speed == 0 || speed == 100 ) ){
 
 		if(millis() > pot_last_update + POT_DEBOUNCE ){
@@ -422,7 +419,7 @@ void ReadSpeedPot(boolean to_relay){
 			DEBUG_PRINT(", Speed=");
 			DEBUG_PRINT( speed );
 			DEBUG_PRINTLN("");
-			
+
 			SetAnimSpeed(speed, true, to_relay);
 		}
 	}
@@ -449,12 +446,12 @@ void ProcessButtons(){
 		else{
 			SetMode (strip_mode + 1, true, to_relay);
 		}
-	}	
+	}
 	else if(ButStrip.pressedFor(BUT_HOLD_TIME)){
 		but_strip_held = true;
 		//DEBUG_PRINT("sH.");
 		ReadSpeedPot(to_relay);
-	}	
+	}
 
 	// Relay Button
 	ButRelay.read();
@@ -466,10 +463,10 @@ void ProcessButtons(){
 		else{
 			SetMode (relay_mode + 1, true, to_relay);
 		}
-	}	
+	}
 	else if(ButRelay.pressedFor(BUT_HOLD_TIME)){
 		but_relay_held = true;
-		//DEBUG_PRINT("rH.");	
+		//DEBUG_PRINT("rH.");
 		ReadSpeedPot(to_relay);
 	}
 }
@@ -480,7 +477,7 @@ void SetAnimSpeed(unsigned int speed, boolean do_send_msg, boolean to_relay){
     	case 0:
 			if( speed != strip_speed ){
 				strip_speed = speed ;
-				strip_time = map( strip_speed, 0, 100, S_ATIME_MIN, S_ATIME_MAX) ;		
+				strip_time = map( strip_speed, 0, 100, S_ATIME_MIN, S_ATIME_MAX) ;
 				StripLed.setRate( strip_time / BLINK_PATTERN_DIVISOR );
 
 				DEBUG_PRINT(" -> S.Speed=");
@@ -496,7 +493,7 @@ void SetAnimSpeed(unsigned int speed, boolean do_send_msg, boolean to_relay){
     	case 1:
 			if( speed != relay_speed ){
 				relay_speed = speed ;
-				relay_time = map( relay_speed, 0, 100, R_ATIME_MIN, R_ATIME_MAX) ;		
+				relay_time = map( relay_speed, 0, 100, R_ATIME_MIN, R_ATIME_MAX) ;
 				RelayLed.setRate( relay_time );
 				RelayOut.setRate( relay_time );
 
@@ -514,8 +511,8 @@ void SetAnimSpeed(unsigned int speed, boolean do_send_msg, boolean to_relay){
 
 // --------------------------------------------------------------------
 void SetMode(byte mode, boolean do_send_msg, boolean to_relay){
-	
-	DEBUG_PRINT(" -> Set ");	
+
+	DEBUG_PRINT(" -> Set ");
 	byte last_mode;
 
 	switch (to_relay){
@@ -527,10 +524,10 @@ void SetMode(byte mode, boolean do_send_msg, boolean to_relay){
 			}
     		last_mode=strip_mode;
 			DEBUG_PRINT("Strip Mode: ");
-			//DEBUG_PRINT(mode);	
+			//DEBUG_PRINT(mode);
 
 			if(mode == MODE_OFF){
-				DEBUG_PRINTLN("OFF");	
+				DEBUG_PRINTLN("OFF");
 				strip_anim_on =false;
 
 				if (last_mode == MODE_ON){
@@ -542,7 +539,7 @@ void SetMode(byte mode, boolean do_send_msg, boolean to_relay){
 					}
 				}
 				else if (last_mode == MODE_ANIM){
-			
+
 					if(! strip_anim_stopping){
 						strip_anim_stopping =1;
 						Scheduler.delay(S_ATIME_MAX + S_ATIME_OFF + 50);
@@ -553,19 +550,19 @@ void SetMode(byte mode, boolean do_send_msg, boolean to_relay){
 					if(do_send_msg){
 						SendOnOffStatus(false, to_relay);
 						SendAnimStatus(false, to_relay);
-					}			
+					}
 				}
 				else if(last_mode == MODE_INIT){
 					Pixels_Off();
 					if(do_send_msg){
 						SendOnOffStatus(false, to_relay);
 						SendAnimStatus(false, to_relay);
-					}			
+					}
 				}
 			}
 
 			else if (mode == MODE_ON){
-				DEBUG_PRINTLN("ON");	
+				DEBUG_PRINTLN("ON");
 				strip_anim_on =false;
 
 				if(last_mode == MODE_OFF){
@@ -575,7 +572,7 @@ void SetMode(byte mode, boolean do_send_msg, boolean to_relay){
 						SendOnOffStatus(true, to_relay);
 						//SendAnimStatus(false, to_relay);
 					}
-				}	
+				}
 				else if (last_mode == MODE_ANIM){
 					if(do_send_msg){
 						SendOnOffStatus(true, to_relay);
@@ -587,12 +584,12 @@ void SetMode(byte mode, boolean do_send_msg, boolean to_relay){
 					if(do_send_msg){
 						SendOnOffStatus(true, to_relay);
 						SendAnimStatus(false, to_relay);
-					}			
+					}
 				}
 			}
-			
+
 			else if (mode == MODE_ANIM){
-				DEBUG_PRINTLN("ANIM");	
+				DEBUG_PRINTLN("ANIM");
 				strip_anim_on = true;
 
 				if(last_mode == MODE_OFF){
@@ -616,7 +613,7 @@ void SetMode(byte mode, boolean do_send_msg, boolean to_relay){
 					if(do_send_msg){
 						SendOnOffStatus(false, to_relay);
 						SendAnimStatus(true, to_relay);
-					}			
+					}
 				}
 
 			}
@@ -630,12 +627,12 @@ void SetMode(byte mode, boolean do_send_msg, boolean to_relay){
 				mode=MODE_OFF;
 			}
 
-    		last_mode=relay_mode;    		
-			DEBUG_PRINT("Relay Mode: ");	
-			//DEBUG_PRINT(mode);	
+    		last_mode=relay_mode;
+			DEBUG_PRINT("Relay Mode: ");
+			//DEBUG_PRINT(mode);
 
 			if(mode == MODE_OFF){
-				DEBUG_PRINTLN("OFF");	
+				DEBUG_PRINTLN("OFF");
 				relay_anim_on =false;
 
 				if (last_mode == MODE_ON){
@@ -646,22 +643,22 @@ void SetMode(byte mode, boolean do_send_msg, boolean to_relay){
 					}
 				}
 				else if (last_mode == MODE_ANIM){
-			
+
 					if(do_send_msg){
 						SendOnOffStatus(false, to_relay);
 						SendAnimStatus(false, to_relay);
-					}			
+					}
 				}
 				else if(last_mode == MODE_INIT){
 					if(do_send_msg){
 						SendOnOffStatus(false, to_relay);
 						SendAnimStatus(false, to_relay);
-					}			
+					}
 				}
 			}
 
 			else if (mode == MODE_ON){
-				DEBUG_PRINTLN("ON");	
+				DEBUG_PRINTLN("ON");
 				relay_anim_on =false;
 
 				if(last_mode == MODE_OFF){
@@ -670,7 +667,7 @@ void SetMode(byte mode, boolean do_send_msg, boolean to_relay){
 						SendOnOffStatus(true, to_relay);
 						//SendAnimStatus(false, to_relay);
 					}
-				}	
+				}
 				else if (last_mode == MODE_ANIM){
 
 					if(do_send_msg){
@@ -682,11 +679,11 @@ void SetMode(byte mode, boolean do_send_msg, boolean to_relay){
 					if(do_send_msg){
 						SendOnOffStatus(true, to_relay);
 						SendAnimStatus(false, to_relay);
-					}			
+					}
 				}
 			}
 			else if (mode == MODE_ANIM){
-				DEBUG_PRINTLN("ANIM");	
+				DEBUG_PRINTLN("ANIM");
 				relay_anim_on = true;
 
 				if(last_mode == MODE_OFF){
@@ -707,7 +704,7 @@ void SetMode(byte mode, boolean do_send_msg, boolean to_relay){
 					if(do_send_msg){
 						SendOnOffStatus(false, to_relay);
 						SendAnimStatus(true, to_relay);
-					}			
+					}
 				}
 			}
 			relay_mode = mode;
@@ -734,7 +731,7 @@ void SequenceStrip(){
 	if(!strip_anim_on){return;}
 	Pixels_Up(0, 1,0);		// red, hold
 
-	StripAnim_Up_Drift(3, 0);	// x3 
+	StripAnim_Up_Drift(3, 0);	// x3
 
 	StripAnim_Random(100,0);		// x120
 
@@ -742,7 +739,7 @@ void SequenceStrip(){
 	Pixels_Up(gHue, 0,1);	// off, drift
 
 	StripAnim_Random(40,1);		// x40, hold
-	
+
 	StripAnim_Down_Drift(2,0);	//x2
 
 	Pixels_Down(160, 1,0); 	// blue, hold
@@ -831,15 +828,15 @@ void StripAnim_UpDown(uint8_t hue, boolean hold, boolean drift){
 void StripAnim_Rainbow(unsigned int count){
 	unsigned long hue=0;
 	const byte step= ceil(255 / NUM_LEDS );
-	for(int i=0; i< (count * 255 / step) ; i++){
+	for(unsigned int i=0; i< (count * 255 / step) ; i++){
 		if(!strip_anim_on){return;}
 
 		if(hue > 4294967295){
 			hue=0;
 		}
 		Pixels_Rainbow(hue);
-		Scheduler.delay(ceil(strip_time / 8) );			
-		hue = hue + step;	
+		Scheduler.delay(ceil(strip_time / 8) );
+		hue = hue + step;
 	}
 }
 
@@ -851,7 +848,7 @@ void Pixels_Blink_One(uint8_t hue, boolean hold, boolean drift){
 	}
 	FastLED.show();
 	Scheduler.delay(strip_time * 2);
-	
+
 	//off --------
 	if(! hold){
 		Pixels_Off();
@@ -918,7 +915,7 @@ void Pixels_Down(uint8_t hue, boolean hold, boolean drift){
 
 	for(int i=NUM_LEDS - 1; i >=0; i-- ){
 		if(!strip_anim_on){return;}
-		
+
 		// on --------------------------
 		leds[i] = CHSV(hue, 255, 255);
 		FastLED.show();
