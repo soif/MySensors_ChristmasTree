@@ -19,7 +19,7 @@
 
 // Define ################################################################################
 #define INFO_NAME "ChristmasTree"
-#define INFO_VERS "2.1.00"
+#define INFO_VERS "2.10.00"
 
 // MySensors
 #define MY_RADIO_NRF24
